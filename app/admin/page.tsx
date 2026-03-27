@@ -55,6 +55,16 @@ export default function AdminPage() {
   const [passwordError, setPasswordError] = useState(false);
   const [tab, setTab] = useState<'orders' | 'inventory'>('orders');
 
+  useEffect(() => {
+    // Проверяем сохранённый пароль
+    const saved = localStorage.getItem('admin_authed');
+    if (saved === ADMIN_PASSWORD) {
+      setAuthed(true);
+      loadOrders();
+      loadInventory();
+    }
+  }, []);
+
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
@@ -68,6 +78,7 @@ export default function AdminPage() {
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
+      localStorage.setItem('admin_authed', ADMIN_PASSWORD);
       setAuthed(true);
       setPasswordError(false);
       loadOrders();
