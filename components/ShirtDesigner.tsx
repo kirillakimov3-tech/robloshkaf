@@ -153,14 +153,229 @@ export default function ShirtDesigner({
     );
   }, [scale, avatarWidth, avatarHeight, PRINT_AREA.x, PRINT_AREA.y, PRINT_AREA.width, PRINT_AREA.height]);
 
-  const exportPng = () => {
-    const uri = stageRef.current?.toDataURL({ pixelRatio: 3 });
-    if (!uri) return;
+  const exportMockup = async () => {
+    const stage = stageRef.current;
+    if (!stage) return;
 
-    const link = document.createElement('a');
-    link.download = 'roblox-shirt-design.png';
-    link.href = uri;
-    link.click();
+    // ── 1. PNG для типографии — только зона печати, 300 DPI ──
+    // Реальный размер зоны печати ~30x30 см при 300 DPI = 3543x3543 px
+    // Но нам нужен только принт (аватар + никнейм) без футболки
+    const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width; // масштаб до 300 DPI
+
+    const printCanvas = document.createElement('canvas');
+    const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
+    const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
+    printCanvas.width = PRINT_PX;
+    printCanvas.height = PRINT_PY;
+    const ctx = printCanvas.getContext('2d')!;
+
+    // Прозрачный фон (для DTF/DTG печати)
+    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+
+    // Получаем полный канвас и вырезаем зону печати
+    const fullDataUrl = stage.toDataURL({ pixelRatio: PRINT_DPI_SCALE });
+    await new Promise<void>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        ctx.drawImage(
+          img,
+          PRINT_AREA.x * PRINT_DPI_SCALE,
+          PRINT_AREA.y * PRINT_DPI_SCALE,
+          PRINT_PX,
+          PRINT_PY,
+          0, 0,
+          PRINT_PX,
+          PRINT_PY
+        );
+        resolve();
+      };
+      img.src = fullDataUrl;
+    });
+
+    const printPngUrl = printCanvas.toDataURL('image/png');
+
+    // Скачать PNG
+    const pngLink = document.createElement('a');
+    pngLink.download = `robloshkaf-print-${username || 'user'}-${shirtSize}.png`;
+    pngLink.href = printPngUrl;
+    pngLink.click();
+
+    // ── 2. PDF с макетом и размерами ──
+    // Используем jsPDF через CDN
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    document.head.appendChild(script);
+
+    await new Promise<void>((resolve) => {
+      script.onload = () => resolve();
+    });
+
+    const { jsPDF } = (window as any).jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Цвета
+    const BLACK = [24, 24, 27];
+    const YELLOW = [255, 217, 61];
+    const GRAY = [120, 120, 120];
+
+    // Заголовок
+    doc.setFillColor(...BLACK);
+    doc.rect(0, 0, 210, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('РОБЛОШКАФ — МАКЕТ ДЛЯ ТИПОГРАФИИ', 15, 18);
+
+    // Превью футболки
+    const previewUrl = stage.toDataURL({ pixelRatio: 1.5 });
+    doc.addImage(previewUrl, 'PNG', 15, 35, 85, 82);
+
+    // Рамка вокруг превью
+    doc.setDrawColor(...BLACK);
+    doc.setLineWidth(0.8);
+    doc.rect(15, 35, 85, 82);
+
+    // Подпись под превью
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Предварительный просмотр (не для печати)', 15, 122);
+
+    // ── Блок с параметрами заказа ──
+    doc.setFillColor(...YELLOW);
+    doc.roundedRect(108, 35, 87, 10, 2, 2, 'F');
+    doc.setTextColor(...BLACK);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ПАРАМЕТРЫ ЗАКАЗА', 113, 42);
+
+    const params = [
+      ['Никнейм', username || 'Demo User'],
+      ['Цвет футболки', shirtColor === 'white' ? 'Белая' : 'Чёрная'],
+      ['Размер футболки', shirtSize],
+      ['Тип принта', avatarType === 'head' ? 'Только голова' : 'Весь аватар'],
+      ['Никнейм на принте', showNickname && label ? label : 'Нет'],
+      ['Шрифт никнейма', showNickname ? nicknameFont : '—'],
+    ];
+
+    let py = 52;
+    params.forEach(([key, val], i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(108, py - 4, 87, 8, 'F');
+      }
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...BLACK);
+      doc.text(key + ':', 111, py);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text(String(val), 155, py);
+      py += 9;
+    });
+
+    // ── Блок размеров принта ──
+    const sizeRow = SIZE_TABLE.find(r => r.size === shirtSize) || SIZE_TABLE[1];
+    // Зона печати ~30x30 см стандарт для DTF
+    const printWidthCm = 30;
+    const printHeightCm = Math.round(PRINT_AREA.height / PRINT_AREA.width * printWidthCm);
+    const avatarWidthCm = Math.round(avatarWidth / PRINT_AREA.width * printWidthCm * 10) / 10;
+    const avatarHeightCm = Math.round(avatarHeight / PRINT_AREA.width * printWidthCm * 10) / 10;
+    // Отступ сверху от горловины ~8 см стандарт
+    const topOffsetCm = 8;
+    const nickSizePt = Math.round(nicknameSize / STAGE_WIDTH * printWidthCm * 28.35 / 10) / 10;
+
+    doc.setFillColor(...BLACK);
+    doc.roundedRect(15, 130, 180, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('РАЗМЕРЫ ДЛЯ ПЕЧАТИ', 20, 137);
+
+    const dims = [
+      ['Размер зоны печати', `${printWidthCm} × ${printHeightCm} см`],
+      ['Ширина принта (аватар)', `${avatarWidthCm} см`],
+      ['Высота принта (аватар)', `${avatarHeightCm} см`],
+      ['Отступ от горловины', `${topOffsetCm} см`],
+      ['Размер никнейма', showNickname ? `${nicknameSize}pt → ~${nickSizePt} см` : 'Нет'],
+      ['Поворот никнейма', showNickname ? `${nicknameRotation}°` : '—'],
+      ['Разрешение файла PNG', '300 DPI (3543 × 3543 px)'],
+      ['Формат файла', 'PNG с прозрачным фоном (для DTF/DTG)'],
+    ];
+
+    let dy = 148;
+    dims.forEach(([key, val], i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(15, dy - 4, 180, 8, 'F');
+      }
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...BLACK);
+      doc.text(key + ':', 18, dy);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text(String(val), 110, dy);
+      dy += 9;
+    });
+
+    // ── Размеры футболки ──
+    doc.setFillColor(...BLACK);
+    doc.roundedRect(15, dy + 4, 180, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`РАЗМЕРЫ ФУТБОЛКИ — ${shirtSize}`, 20, dy + 11);
+    dy += 20;
+
+    const shirtDims = [
+      ['Ширина футболки', sizeRow.width],
+      ['Длина футболки', sizeRow.length],
+      ['Цвет', shirtColor === 'white' ? 'Белый' : 'Чёрный'],
+    ];
+
+    shirtDims.forEach(([key, val], i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(15, dy - 4, 180, 8, 'F');
+      }
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...BLACK);
+      doc.text(key + ':', 18, dy);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text(String(val), 110, dy);
+      dy += 9;
+    });
+
+    // ── PNG превью принта в PDF ──
+    dy += 6;
+    doc.setFillColor(...BLACK);
+    doc.roundedRect(15, dy, 180, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ФАЙЛ ПРИНТА (300 DPI)', 20, dy + 7);
+    dy += 16;
+
+    doc.addImage(printPngUrl, 'PNG', 70, dy, 70, 70);
+    doc.setDrawColor(...BLACK);
+    doc.setLineWidth(0.5);
+    doc.rect(70, dy, 70, 70);
+    doc.setFontSize(7);
+    doc.setTextColor(...GRAY);
+    doc.text('Это файл который нужно передать в типографию', 50, dy + 76);
+
+    // Футер
+    doc.setFillColor(...BLACK);
+    doc.rect(0, 282, 210, 15, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Роблошкаф | robloshkaf.vercel.app | Заказ: ${username || 'user'} | ${new Date().toLocaleDateString('ru-RU')}`, 15, 291);
+
+    doc.save(`robloshkaf-макет-${username || 'user'}-${shirtSize}.pdf`);
   };
 
   const animateToCart = () => {
@@ -434,10 +649,10 @@ export default function ShirtDesigner({
               </button>
               {isAdmin && (
                 <button
-                  onClick={exportPng}
-                  className="w-full rounded-2xl border-2 border-zinc-900 bg-white px-4 py-3.5 font-black shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all"
+                  onClick={exportMockup}
+                  className="w-full rounded-2xl border-2 border-zinc-900 bg-yellow-400 px-4 py-3.5 font-black text-zinc-900 shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all"
                 >
-                  Скачать макет PNG
+                  📥 Скачать макет (PNG + PDF)
                 </button>
               )}
             </div>

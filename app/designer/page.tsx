@@ -125,11 +125,12 @@ export default function DesignerPage() {
             </a>
           </div>
         ) : (
-          <ShirtDesigner
-            headshotUrl={headshotUrl}
-            fullAvatarUrl={fullAvatarUrl}
-            username={username}
-          />
+         <ShirtDesigner
+  headshotUrl={headshotUrl}
+  fullAvatarUrl={fullAvatarUrl}
+  username={username}
+  isAdmin={username === 'kadralievm'}
+/>
         )}
       </div>
     </main>
