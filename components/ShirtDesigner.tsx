@@ -156,6 +156,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
 
   const [mockupImage] = useImage(mockupSrc, 'anonymous');
   const [avatarImage] = useImage(currentAvatarUrl || '', 'anonymous');
+  const [overlayImage] = useImage('/mockups/tshirt-overlay.png', 'anonymous');
 
   const MOCKUP_BOX = { x: 25, y: -70, width: 1030, height: 1030 };
 
@@ -174,10 +175,10 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
   };
 
   const BG_AREA = {
-    x: PRINT_AREA.x - 8,
-    y: PRINT_AREA.y - 8,
-    width: PRINT_AREA.width + 16,
-    height: PRINT_AREA.height + 16,
+    x: mockupX + mockupSize.width * 0.18,
+    y: mockupY + mockupSize.height * 0.1,
+    width: mockupSize.width * 0.64,
+    height: mockupSize.height * 0.82,
   };
 
   const textFill = shirtColor === 'black' ? '#ffffff' : '#111111';
@@ -484,7 +485,10 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
               <Layer>
                 {selectedBg !== 'none' && (
-                  <BackgroundLayer bgId={selectedBg} x={BG_AREA.x} y={BG_AREA.y} width={BG_AREA.width} height={BG_AREA.height} />
+                  <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                )}
+                {selectedBg === 'none' && mockupImage && (
+                  <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
                 {avatarImage ? (
                   <KonvaImage image={avatarImage} x={x} y={y} width={avatarWidth} height={avatarHeight} draggable opacity={0.98} onDragEnd={handleAvatarDragEnd} />
@@ -504,8 +508,8 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     fontFamily={nicknameFont} rotation={nicknameRotation}
                     draggable onDragEnd={handleNicknameDragEnd} />
                 )}
-                {mockupImage && (
-                  <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                {selectedBg !== 'none' && overlayImage && (
+                  <KonvaImage image={overlayImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
               </Layer>
             </Stage>
