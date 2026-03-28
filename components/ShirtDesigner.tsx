@@ -214,23 +214,72 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
   const exportMockup = async () => {
     const stage = stageRef.current;
     if (!stage) return;
+
+    // DTF print canvas — 300 DPI at 30cm width = 3543px
     const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
-    const printCanvas = document.createElement('canvas');
     const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
     const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
+
+    const printCanvas = document.createElement('canvas');
     printCanvas.width = PRINT_PX;
     printCanvas.height = PRINT_PY;
     const ctx = printCanvas.getContext('2d')!;
     ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
-    const fullDataUrl = stage.toDataURL({ pixelRatio: PRINT_DPI_SCALE });
-    await new Promise<void>((resolve) => {
-      const img = new window.Image();
-      img.onload = () => {
-        ctx.drawImage(img, PRINT_AREA.x * PRINT_DPI_SCALE, PRINT_AREA.y * PRINT_DPI_SCALE, PRINT_PX, PRINT_PY, 0, 0, PRINT_PX, PRINT_PY);
-        resolve();
-      };
-      img.src = fullDataUrl;
-    });
+
+    const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
+
+    // 1. Draw image background (e.g. rainbow) if selected
+    if (bgDef?.image) {
+      const rainbowRatio = 1817 / 961;
+      const bgW = PRINT_AREA.width * 0.693;
+      const bgH = bgW / rainbowRatio;
+      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
+      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
+      await new Promise<void>((resolve) => {
+        const bgImg = new window.Image();
+        bgImg.crossOrigin = 'anonymous';
+        bgImg.onload = () => {
+          ctx.drawImage(
+            bgImg,
+            (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
+            (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
+            bgW * PRINT_DPI_SCALE,
+            bgH * PRINT_DPI_SCALE
+          );
+          resolve();
+        };
+        bgImg.onerror = () => resolve();
+        bgImg.src = bgDef.image!;
+      });
+    }
+
+    // 2. Draw avatar
+    if (avatarImage) {
+      ctx.drawImage(
+        avatarImage,
+        (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
+        (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
+        avatarWidth * PRINT_DPI_SCALE,
+        avatarHeight * PRINT_DPI_SCALE
+      );
+    }
+
+    // 3. Draw nickname text
+    if (showNickname && label.trim()) {
+      const fontSize = nicknameSize * PRINT_DPI_SCALE;
+      ctx.save();
+      ctx.font = `bold ${fontSize}px ${nicknameFont}`;
+      ctx.fillStyle = textFill;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const tx = (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE;
+      const ty = (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE;
+      ctx.translate(tx, ty);
+      ctx.rotate((nicknameRotation * Math.PI) / 180);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+
     const printPngUrl = printCanvas.toDataURL('image/png');
     const pngLink = document.createElement('a');
     pngLink.download = `robloshkaf-print-${username || 'user'}-${shirtSize}.png`;
@@ -262,12 +311,17 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     doc.setTextColor(...BLACK); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
     doc.text('ПАРАМЕТРЫ ЗАКАЗА', 113, 42);
 
+    const printWidthMm = Math.round(PRINT_AREA.width / PRINT_DPI_SCALE * 25.4);
+    const printHeightMm = Math.round(PRINT_AREA.height / PRINT_DPI_SCALE * 25.4);
+
     const params = [
       ['Никнейм', username || 'Demo User'],
       ['Цвет', shirtColor === 'white' ? 'Белая' : 'Чёрная'],
       ['Размер', shirtSize],
       ['Фон', BACKGROUNDS.find(b => b.id === selectedBg)?.label || 'Нет'],
       ['Никнейм на принте', showNickname && label ? label : 'Нет'],
+      ['Размер принта', `${printWidthMm}×${printHeightMm} мм`],
+      ['Разрешение', `${PRINT_PX}×${PRINT_PY} px (300 DPI)`],
     ];
     let py = 52;
     params.forEach(([k, v], i) => {
@@ -277,8 +331,11 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       doc.text(String(v), 155, py); py += 9;
     });
 
-    doc.addImage(printPngUrl, 'PNG', 70, 140, 70, 70);
-    doc.setDrawColor(...BLACK); doc.setLineWidth(0.5); doc.rect(70, 140, 70, 70);
+    // Print PNG (transparent, no shirt)
+    doc.addImage(printPngUrl, 'PNG', 55, 148, 100, 100);
+    doc.setDrawColor(...BLACK); doc.setLineWidth(0.5); doc.rect(55, 148, 100, 100);
+    doc.setFontSize(7); doc.setTextColor(...GRAY);
+    doc.text('Файл принта (прозрачный фон, для DTF печати)', 55, 253);
     doc.setFillColor(...BLACK); doc.rect(0, 282, 210, 15, 'F');
     doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
     doc.text(`Роблошкаф | robloshkaf.vercel.app | ${username || 'user'} | ${new Date().toLocaleDateString('ru-RU')}`, 15, 291);
@@ -508,7 +565,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image && mockupImage) {
                     const rainbowRatio = 1817 / 961;
-                    const bgW = PRINT_AREA.width * 0.693;
+                    const bgW = PRINT_AREA.width * 0.9;
                     const bgH = bgW / rainbowRatio;
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
