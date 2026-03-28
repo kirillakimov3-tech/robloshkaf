@@ -484,8 +484,22 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
           <div className="rounded-[32px] bg-white p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
               <Layer>
-                {selectedBg !== 'none' && (
-                  <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                {selectedBg !== 'none' && mockupImage && (
+                  <>
+                    {/* Render background clipped to shirt shape using destination-in */}
+                    <KonvaImage
+                      image={mockupImage}
+                      x={mockupX} y={mockupY}
+                      width={mockupSize.width} height={mockupSize.height}
+                    />
+                    <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                    <KonvaImage
+                      image={mockupImage}
+                      x={mockupX} y={mockupY}
+                      width={mockupSize.width} height={mockupSize.height}
+                      globalCompositeOperation="destination-in"
+                    />
+                  </>
                 )}
                 {selectedBg === 'none' && mockupImage && (
                   <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
