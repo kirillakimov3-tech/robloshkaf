@@ -502,7 +502,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
               </Layer>
-              {/* Layer 2: image background clipped to shirt shape via destination-in */}
+              {/* Layer 2: image/color background inside print area */}
               <Layer listening={false}>
                 {(() => {
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
@@ -513,19 +513,18 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
                     return (
-                      <>
+                      <Group
+                        clipX={PRINT_AREA.x} clipY={PRINT_AREA.y}
+                        clipWidth={PRINT_AREA.width} clipHeight={PRINT_AREA.height}
+                      >
                         <ImageBackgroundLayer src={bgDef.image} x={bgX} y={bgY} width={bgW} height={bgH} />
-                        <KonvaImage
-                          image={mockupImage} x={mockupX} y={mockupY}
-                          width={mockupSize.width} height={mockupSize.height}
-                          globalCompositeOperation="destination-in"
-                        />
-                      </>
+                      </Group>
                     );
                   }
                   if (bgDef?.colors && mockupImage) {
                     return (
                       <>
+                        <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                         <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                         <KonvaImage
                           image={mockupImage} x={mockupX} y={mockupY}
