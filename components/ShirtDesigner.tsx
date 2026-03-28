@@ -181,11 +181,11 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     height: mockupSize.height * 0.5,
   };
 
- const BG_AREA = {
-    x: mockupX + mockupSize.width * 0.28,
-    y: mockupY + mockupSize.height * 0.3,
-    width: mockupSize.width * 0.44,
-    height: mockupSize.height * 0.45,
+const BG_AREA = {
+    x: mockupX + mockupSize.width * 0.29,
+    y: mockupY + mockupSize.height * 0.28,
+    width: mockupSize.width * 0.42,
+    height: mockupSize.height * 0.42,
 };
 
   const textFill = shirtColor === 'black' ? '#ffffff' : '#111111';
