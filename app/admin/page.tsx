@@ -10,6 +10,23 @@ const supabase = createClient(
 
 const ADMIN_PASSWORD = 'robloshkaf2026';
 
+type OrderItem = {
+  id: string;
+  username: string;
+  shirtColor: 'white' | 'black';
+  size: string;
+  nickname: string;
+  nicknameSize: number;
+  nicknameFont?: string;
+  nicknameRotation?: number;
+  avatarType: string;
+  avatarUrl?: string;
+  background?: string;
+  previewDataUrl?: string;
+  printAvatarBgUrl?: string;
+  printNicknameUrl?: string;
+};
+
 type Order = {
   id: string;
   created_at: string;
@@ -19,16 +36,7 @@ type Order = {
   address: string;
   comment?: string;
   status: string;
-  items: Array<{
-    id: string;
-    username: string;
-    shirtColor: 'white' | 'black';
-    size: string;
-    nickname: string;
-    nicknameSize: number;
-    avatarType: string;
-    previewDataUrl?: string;
-  }>;
+  items: OrderItem[];
 };
 
 type InventoryItem = {
@@ -49,6 +57,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 const SIZES = ['S', 'M', 'L', 'XL'];
 
+const downloadBlob = (dataUrl: string, filename: string) => {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState('');
@@ -56,7 +73,6 @@ export default function AdminPage() {
   const [tab, setTab] = useState<'orders' | 'inventory'>('orders');
 
   useEffect(() => {
-    // Проверяем сохранённый пароль
     const saved = localStorage.getItem('admin_authed');
     if (saved === ADMIN_PASSWORD) {
       setAuthed(true);
@@ -65,13 +81,11 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Orders
   const [orders, setOrders] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [filter, setFilter] = useState('all');
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Inventory
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -100,7 +114,7 @@ export default function AdminPage() {
     const { data: inv } = await supabase.from('inventory').select('*');
     const { data: settings } = await supabase.from('settings').select('*');
     setInventory(inv || []);
-    const shopSetting = settings?.find(s => s.key === 'shop_open');
+    const shopSetting = settings?.find((s: any) => s.key === 'shop_open');
     setShopOpen(shopSetting?.value === 'true');
     setLoadingInventory(false);
   };
@@ -122,12 +136,25 @@ export default function AdminPage() {
     setShopOpen(next);
   };
 
-  const downloadMockup = (item: any) => {
-    if (!item.previewDataUrl) return alert('Нет превью');
-    const link = document.createElement('a');
-    link.download = `mockup-${item.username}-${item.size}.png`;
-    link.href = item.previewDataUrl;
-    link.click();
+  // Скачать: Фон + Аватар
+  const downloadAvatarBg = (item: OrderItem) => {
+    if (item.printAvatarBgUrl) {
+      downloadBlob(item.printAvatarBgUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
+    } else if (item.previewDataUrl) {
+      // Fallback: скачать превью
+      downloadBlob(item.previewDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
+    } else {
+      alert('Нет файла фон+аватар. Попроси покупателя переоформить заказ.');
+    }
+  };
+
+  // Скачать: Никнейм
+  const downloadNickname = (item: OrderItem) => {
+    if (item.printNicknameUrl) {
+      downloadBlob(item.printNicknameUrl, `print-2-nickname-${item.username}-${item.size}.png`);
+    } else {
+      alert('Нет файла никнейма. Попроси покупателя переоформить заказ.');
+    }
   };
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
@@ -140,12 +167,9 @@ export default function AdminPage() {
           <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-8">
             <div className="text-center mb-8">
               <div className="text-5xl mb-3">🔐</div>
-              <h1 className="text-2xl font-black text-white" style={{ fontFamily: "'Fredoka One', sans-serif" }}>
-                Роблошкаф
-              </h1>
+              <h1 className="text-2xl font-black text-white" style={{ fontFamily: "'Fredoka One', sans-serif" }}>Роблошкаф</h1>
               <p className="text-zinc-500 font-semibold text-sm mt-1">Вход в админку</p>
             </div>
-
             <div className="space-y-4">
               <input
                 type="password"
@@ -153,17 +177,10 @@ export default function AdminPage() {
                 onChange={e => { setPassword(e.target.value); setPasswordError(false); }}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 placeholder="Введи пароль"
-                className={`w-full rounded-xl border-2 px-4 py-3 bg-zinc-800 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 transition ${
-                  passwordError ? 'border-red-500' : 'border-zinc-600'
-                }`}
+                className={`w-full rounded-xl border-2 px-4 py-3 bg-zinc-800 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 transition ${passwordError ? 'border-red-500' : 'border-zinc-600'}`}
               />
-              {passwordError && (
-                <p className="text-red-400 text-sm font-semibold">Неверный пароль</p>
-              )}
-              <button
-                onClick={handleLogin}
-                className="w-full rounded-xl border-2 border-zinc-900 bg-[#E02020] py-3 font-black text-white shadow-[3px_3px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000] transition-all"
-              >
+              {passwordError && <p className="text-red-400 text-sm font-semibold">Неверный пароль</p>}
+              <button onClick={handleLogin} className="w-full rounded-xl border-2 border-zinc-900 bg-[#E02020] py-3 font-black text-white shadow-[3px_3px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000] transition-all">
                 Войти
               </button>
             </div>
@@ -176,65 +193,41 @@ export default function AdminPage() {
   // ── ADMIN ──
   return (
     <main className="min-h-screen bg-zinc-950 text-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
-      {/* Header */}
       <div className="border-b-2 border-zinc-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E02020] border-2 border-zinc-700 font-black text-sm">А</div>
           <div>
-            <div className="font-black text-lg leading-none" style={{ fontFamily: "'Fredoka One', sans-serif" }}>
-              Роблошкаф — Админка
-            </div>
+            <div className="font-black text-lg leading-none" style={{ fontFamily: "'Fredoka One', sans-serif" }}>Роблошкаф — Админка</div>
             <div className="text-xs text-zinc-500 font-semibold">{orders.length} заказов</div>
           </div>
         </div>
         <div className="flex gap-2">
           {(['orders', 'inventory'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded-xl border-2 px-4 py-2 text-sm font-black transition ${
-                tab === t ? 'border-yellow-400 bg-yellow-400 text-zinc-900' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              }`}
-            >
+            <button key={t} onClick={() => setTab(t)} className={`rounded-xl border-2 px-4 py-2 text-sm font-black transition ${tab === t ? 'border-yellow-400 bg-yellow-400 text-zinc-900' : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
               {t === 'orders' ? '📋 Заказы' : '📦 Товары'}
             </button>
           ))}
-          <a href="/" className="rounded-xl border-2 border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-black hover:bg-zinc-700 transition">
-            На сайт →
-          </a>
+          <a href="/" className="rounded-xl border-2 border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-black hover:bg-zinc-700 transition">На сайт →</a>
         </div>
       </div>
 
-      {/* ── ORDERS TAB ── */}
       {tab === 'orders' && (
         <div className="flex h-[calc(100vh-65px)]">
-          {/* Sidebar */}
           <div className="w-80 border-r-2 border-zinc-800 flex flex-col shrink-0">
             <div className="p-3 border-b border-zinc-800 flex flex-wrap gap-1.5">
               {[['all', 'Все'], ...Object.entries(STATUS_LABELS).map(([k, v]) => [k, v.label])].map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-black transition ${
-                    filter === key ? 'bg-yellow-400 text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
+                <button key={key} onClick={() => setFilter(key)} className={`rounded-lg px-2.5 py-1 text-xs font-black transition ${filter === key ? 'bg-yellow-400 text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
                   {label}
                 </button>
               ))}
             </div>
-
             <div className="overflow-y-auto flex-1">
               {loadingOrders ? (
                 <div className="p-6 text-center text-zinc-500 font-semibold text-sm animate-pulse">Загрузка...</div>
               ) : filtered.length === 0 ? (
                 <div className="p-6 text-center text-zinc-500 font-semibold text-sm">Заказов нет</div>
               ) : filtered.map(order => (
-                <button
-                  key={order.id}
-                  onClick={() => setSelected(order)}
-                  className={`w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-900 transition ${selected?.id === order.id ? 'bg-zinc-800' : ''}`}
-                >
+                <button key={order.id} onClick={() => setSelected(order)} className={`w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-900 transition ${selected?.id === order.id ? 'bg-zinc-800' : ''}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-black text-sm truncate">{order.name}</span>
                     <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ml-2 shrink-0 ${STATUS_LABELS[order.status]?.color || 'bg-zinc-700 text-white'}`}>
@@ -248,25 +241,16 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Detail */}
           <div className="flex-1 overflow-y-auto p-6">
             {!selected ? (
               <div className="flex h-full items-center justify-center text-zinc-600 font-semibold">Выбери заказ</div>
             ) : (
               <div className="max-w-2xl space-y-5">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="font-black text-xl" style={{ fontFamily: "'Fredoka One', sans-serif" }}>
-                    Заказ #{selected.id.slice(0, 8)}
-                  </h2>
+                  <h2 className="font-black text-xl" style={{ fontFamily: "'Fredoka One', sans-serif" }}>Заказ #{selected.id.slice(0, 8)}</h2>
                   <div className="flex gap-2 flex-wrap">
                     {Object.entries(STATUS_LABELS).map(([key, { label, color }]) => (
-                      <button
-                        key={key}
-                        onClick={() => updateStatus(selected.id, key)}
-                        className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${
-                          selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                        }`}
-                      >
+                      <button key={key} onClick={() => updateStatus(selected.id, key)} className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
                         {label}
                       </button>
                     ))}
@@ -306,12 +290,22 @@ export default function AdminPage() {
                             {item.shirtColor === 'white' ? 'Белая' : 'Чёрная'} · {item.size}
                           </div>
                           {item.nickname && <div className="text-sm text-zinc-400 font-semibold">Никнейм: {item.nickname}</div>}
-                          <button
-                            onClick={() => downloadMockup(item)}
-                            className="mt-2 inline-flex rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition"
-                          >
-                            📥 Скачать макет
-                          </button>
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            <button
+                              onClick={() => downloadAvatarBg(item)}
+                              className="inline-flex rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition"
+                            >
+                              📥 Фон + Аватар
+                            </button>
+                            {item.nickname && (
+                              <button
+                                onClick={() => downloadNickname(item)}
+                                className="inline-flex rounded-xl border-2 border-zinc-500 bg-zinc-700 text-white px-3 py-1.5 text-xs font-black hover:bg-zinc-600 transition"
+                              >
+                                📥 Никнейм
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -323,10 +317,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── INVENTORY TAB ── */}
       {tab === 'inventory' && (
         <div className="p-6 max-w-3xl">
-          {/* Магазин вкл/выкл */}
           <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-6 flex items-center justify-between">
             <div>
               <div className="font-black text-lg">Магазин</div>
@@ -334,17 +326,11 @@ export default function AdminPage() {
                 {shopOpen ? '✅ Открыт — покупатели могут делать заказы' : '🔴 Закрыт — заказы отключены'}
               </div>
             </div>
-            <button
-              onClick={toggleShop}
-              className={`rounded-xl border-2 border-zinc-700 px-5 py-2.5 font-black transition shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] ${
-                shopOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-              }`}
-            >
+            <button onClick={toggleShop} className={`rounded-xl border-2 border-zinc-700 px-5 py-2.5 font-black transition shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] ${shopOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
               {shopOpen ? 'Закрыть магазин' : 'Открыть магазин'}
             </button>
           </div>
 
-          {/* Белые футболки */}
           {(['white', 'black'] as const).map(color => (
             <div key={color} className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-5">
               <h3 className="font-black text-lg mb-4 flex items-center gap-2">
@@ -359,25 +345,14 @@ export default function AdminPage() {
                     <div key={size} className={`rounded-xl border-2 p-3 transition ${item.in_stock ? 'border-zinc-600 bg-zinc-800' : 'border-zinc-700 bg-zinc-850 opacity-60'}`}>
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-black text-lg">{size}</span>
-                        <button
-                          onClick={() => updateInventory(item.id, 'in_stock', !item.in_stock)}
-                          className={`rounded-lg px-2 py-1 text-xs font-black border transition ${
-                            item.in_stock ? 'border-green-500 text-green-400 hover:bg-green-500 hover:text-white' : 'border-red-500 text-red-400 hover:bg-red-500 hover:text-white'
-                          }`}
-                        >
+                        <button onClick={() => updateInventory(item.id, 'in_stock', !item.in_stock)} className={`rounded-lg px-2 py-1 text-xs font-black border transition ${item.in_stock ? 'border-green-500 text-green-400 hover:bg-green-500 hover:text-white' : 'border-red-500 text-red-400 hover:bg-red-500 hover:text-white'}`}>
                           {item.in_stock ? 'Есть' : 'Нет'}
                         </button>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => updateInventory(item.id, 'quantity', Math.max(0, item.quantity - 1))}
-                          className="h-7 w-7 rounded-lg border border-zinc-600 bg-zinc-700 font-black text-sm hover:bg-zinc-600 transition flex items-center justify-center"
-                        >−</button>
+                        <button onClick={() => updateInventory(item.id, 'quantity', Math.max(0, item.quantity - 1))} className="h-7 w-7 rounded-lg border border-zinc-600 bg-zinc-700 font-black text-sm hover:bg-zinc-600 transition flex items-center justify-center">−</button>
                         <span className="flex-1 text-center font-black text-base">{item.quantity}</span>
-                        <button
-                          onClick={() => updateInventory(item.id, 'quantity', item.quantity + 1)}
-                          className="h-7 w-7 rounded-lg border border-zinc-600 bg-zinc-700 font-black text-sm hover:bg-zinc-600 transition flex items-center justify-center"
-                        >+</button>
+                        <button onClick={() => updateInventory(item.id, 'quantity', item.quantity + 1)} className="h-7 w-7 rounded-lg border border-zinc-600 bg-zinc-700 font-black text-sm hover:bg-zinc-600 transition flex items-center justify-center">+</button>
                       </div>
                       <div className="text-[10px] text-zinc-500 font-semibold text-center mt-1">шт. в наличии</div>
                     </div>
