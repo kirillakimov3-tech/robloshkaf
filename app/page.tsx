@@ -132,6 +132,16 @@ export default function HomePage() {
 
           {username && (
             <Link
+              href="/my-orders"
+              className="rounded-xl border-2 border-zinc-900 bg-white px-4 py-2 text-sm font-black shadow-[2px_2px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#18181b] transition-all"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              📦 Мои заказы
+            </Link>
+          )}
+
+          {username && (
+            <Link
               href="/cart"
               className="rounded-xl border-2 border-zinc-900 bg-white px-4 py-2 text-sm font-black shadow-[2px_2px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#18181b] transition-all"
               style={{ fontFamily: "'Nunito', sans-serif" }}
@@ -196,6 +206,13 @@ export default function HomePage() {
                     style={{ fontFamily: "'Nunito', sans-serif" }}
                   >
                     🛒 Корзина
+                  </Link>
+                  <Link
+                    href="/my-orders"
+                    className="rounded-2xl border-2 border-zinc-900 bg-white px-7 py-3.5 font-black text-base shadow-[4px_4px_0px_#18181b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#18181b] transition-all"
+                    style={{ fontFamily: "'Nunito', sans-serif" }}
+                  >
+                    📦 Мои заказы
                   </Link>
                 </div>
               ) : (
