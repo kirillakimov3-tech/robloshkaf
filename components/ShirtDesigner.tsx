@@ -211,150 +211,91 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     setY(prev => clamp(prev, PRINT_AREA.y, PRINT_AREA.y + PRINT_AREA.height - avatarHeight));
   }, [scale, avatarWidth, avatarHeight, PRINT_AREA.x, PRINT_AREA.y, PRINT_AREA.width, PRINT_AREA.height]);
 
-  const exportMockup = async () => {
-    const stage = stageRef.current;
-    if (!stage) return;
+  const downloadBlob = (dataUrl: string, filename: string) =>
+    new Promise<void>(resolve => {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(resolve, 1000);
+    });
 
+  const exportMockup = async () => {
     const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
     const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
     const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
-
     const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
 
-    // === FILE 1: Avatar + Background ===
+    // === FILE 1: Фон + Аватар ===
     const mainCanvas = document.createElement('canvas');
     mainCanvas.width = PRINT_PX;
     mainCanvas.height = PRINT_PY;
-    const mainCtx = mainCanvas.getContext('2d')!;
-    mainCtx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+    const mc = mainCanvas.getContext('2d')!;
+    mc.clearRect(0, 0, PRINT_PX, PRINT_PY);
 
-    // Draw image background (e.g. rainbow)
     if (bgDef?.image) {
       const rainbowRatio = 1817 / 961;
       const bgW = PRINT_AREA.width * 0.693;
       const bgH = bgW / rainbowRatio;
       const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
       const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
-      await new Promise<void>((resolve) => {
-        const bgImg = new window.Image();
-        bgImg.crossOrigin = 'anonymous';
-        bgImg.onload = () => {
-          mainCtx.drawImage(
-            bgImg,
+      await new Promise<void>(resolve => {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          mc.drawImage(img,
             (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
             (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
             bgW * PRINT_DPI_SCALE,
-            bgH * PRINT_DPI_SCALE
-          );
+            bgH * PRINT_DPI_SCALE);
           resolve();
         };
-        bgImg.onerror = () => resolve();
-        bgImg.src = bgDef.image!;
+        img.onerror = () => resolve();
+        img.src = bgDef.image!;
       });
     }
 
-    // Draw avatar
     if (avatarImage) {
-      mainCtx.drawImage(
-        avatarImage,
+      mc.drawImage(avatarImage,
         (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
         (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
         avatarWidth * PRINT_DPI_SCALE,
-        avatarHeight * PRINT_DPI_SCALE
-      );
+        avatarHeight * PRINT_DPI_SCALE);
     }
 
-    const mainPngUrl = mainCanvas.toDataURL('image/png');
-    const mainLink = document.createElement('a');
-    mainLink.download = `robloshkaf-print-main-${username || 'user'}-${shirtSize}.png`;
-    mainLink.href = mainPngUrl;
-    mainLink.click();
+    await downloadBlob(
+      mainCanvas.toDataURL('image/png'),
+      `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`
+    );
 
-    // === FILE 2: Nickname only ===
+    // === FILE 2: Только никнейм ===
     if (showNickname && label.trim()) {
       const nickCanvas = document.createElement('canvas');
       nickCanvas.width = PRINT_PX;
       nickCanvas.height = PRINT_PY;
-      const nickCtx = nickCanvas.getContext('2d')!;
-      nickCtx.clearRect(0, 0, PRINT_PX, PRINT_PY);
-
+      const nc = nickCanvas.getContext('2d')!;
+      nc.clearRect(0, 0, PRINT_PX, PRINT_PY);
       const fontSize = nicknameSize * PRINT_DPI_SCALE;
-      nickCtx.save();
-      nickCtx.font = `bold ${fontSize}px ${nicknameFont}`;
-      nickCtx.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
-      nickCtx.textAlign = 'center';
-      nickCtx.textBaseline = 'middle';
-      const tx = (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE;
-      const ty = (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE;
-      nickCtx.translate(tx, ty);
-      nickCtx.rotate((nicknameRotation * Math.PI) / 180);
-      nickCtx.fillText(label, 0, 0);
-      nickCtx.restore();
+      nc.save();
+      nc.font = `bold ${fontSize}px ${nicknameFont}`;
+      nc.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
+      nc.textAlign = 'center';
+      nc.textBaseline = 'middle';
+      nc.translate(
+        (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE,
+        (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE
+      );
+      nc.rotate((nicknameRotation * Math.PI) / 180);
+      nc.fillText(label, 0, 0);
+      nc.restore();
 
-      const nickPngUrl = nickCanvas.toDataURL('image/png');
-      await new Promise<void>(resolve => setTimeout(resolve, 300));
-      const nickLink = document.createElement('a');
-      nickLink.download = `robloshkaf-print-nickname-${username || 'user'}-${shirtSize}.png`;
-      nickLink.href = nickPngUrl;
-      nickLink.click();
+      await downloadBlob(
+        nickCanvas.toDataURL('image/png'),
+        `print-2-nickname-${username || 'user'}-${shirtSize}.png`
+      );
     }
-
-    const printPngUrl = mainPngUrl;
-
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    document.head.appendChild(script);
-    await new Promise<void>((resolve) => { script.onload = () => resolve(); });
-
-    const { jsPDF } = (window as any).jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const BLACK = [24, 24, 27] as const;
-    const YELLOW = [255, 217, 61] as const;
-    const GRAY = [120, 120, 120] as const;
-
-    doc.setFillColor(...BLACK); doc.rect(0, 0, 210, 28, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-    doc.text('РОБЛОШКАФ — МАКЕТ ДЛЯ ТИПОГРАФИИ', 15, 18);
-
-    const previewUrl = stage.toDataURL({ pixelRatio: 1.5 });
-    doc.addImage(previewUrl, 'PNG', 15, 35, 85, 82);
-    doc.setDrawColor(...BLACK); doc.setLineWidth(0.8); doc.rect(15, 35, 85, 82);
-    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont('helvetica', 'normal');
-    doc.text('Предварительный просмотр (не для печати)', 15, 122);
-
-    doc.setFillColor(...YELLOW); doc.roundedRect(108, 35, 87, 10, 2, 2, 'F');
-    doc.setTextColor(...BLACK); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text('ПАРАМЕТРЫ ЗАКАЗА', 113, 42);
-
-    const printWidthMm = Math.round(PRINT_AREA.width / PRINT_DPI_SCALE * 25.4);
-    const printHeightMm = Math.round(PRINT_AREA.height / PRINT_DPI_SCALE * 25.4);
-
-    const params = [
-      ['Никнейм', username || 'Demo User'],
-      ['Цвет', shirtColor === 'white' ? 'Белая' : 'Чёрная'],
-      ['Размер', shirtSize],
-      ['Фон', BACKGROUNDS.find(b => b.id === selectedBg)?.label || 'Нет'],
-      ['Никнейм на принте', showNickname && label ? label : 'Нет'],
-      ['Размер принта', `${printWidthMm}×${printHeightMm} мм`],
-      ['Разрешение', `${PRINT_PX}×${PRINT_PY} px (300 DPI)`],
-    ];
-    let py = 52;
-    params.forEach(([k, v], i) => {
-      if (i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(108, py - 4, 87, 8, 'F'); }
-      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BLACK);
-      doc.text(k + ':', 111, py); doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 60, 60);
-      doc.text(String(v), 155, py); py += 9;
-    });
-
-    // Print PNG (transparent, no shirt)
-    doc.addImage(printPngUrl, 'PNG', 55, 148, 100, 100);
-    doc.setDrawColor(...BLACK); doc.setLineWidth(0.5); doc.rect(55, 148, 100, 100);
-    doc.setFontSize(7); doc.setTextColor(...GRAY);
-    doc.text('Файл принта (прозрачный фон, для DTF печати)', 55, 253);
-    doc.setFillColor(...BLACK); doc.rect(0, 282, 210, 15, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text(`Роблошкаф | robloshkaf.vercel.app | ${username || 'user'} | ${new Date().toLocaleDateString('ru-RU')}`, 15, 291);
-    doc.save(`robloshkaf-макет-${username || 'user'}-${shirtSize}.pdf`);
   };
 
   const animateToCart = () => {
@@ -580,7 +521,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image && mockupImage) {
                     const rainbowRatio = 1817 / 961;
-                    const bgW = PRINT_AREA.width * 0.692;
+                    const bgW = PRINT_AREA.width * 0.9;
                     const bgH = bgW / rainbowRatio;
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
