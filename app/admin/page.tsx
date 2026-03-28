@@ -54,9 +54,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const SIZES = ['S', 'M', 'L', 'XL'];
-const PRINT_W = 530; // approx PRINT_AREA.width in stage coords
-const PRINT_H = 520; // approx PRINT_AREA.height
-const DPI_SCALE = 3543 / PRINT_W;
+const PRINT_W = 530;
+const PRINT_H = 520;
+const DPI_SCALE = 1000 / PRINT_W; // Lower res for PDF — smaller file size
 const PX = Math.round(PRINT_W * DPI_SCALE);
 const PY = Math.round(PRINT_H * DPI_SCALE);
 const RAINBOW_RATIO = 1817 / 961;
@@ -209,7 +209,7 @@ export default function AdminPage() {
   const handleDownloadAvatarBg = async (item: OrderItem) => {
     setDownloading(item.id + '-bg');
     const dataUrl = await generateAvatarBg(item);
-    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'ФОН + АВАТАР');
+    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
     setDownloading('');
   };
 
@@ -217,7 +217,7 @@ export default function AdminPage() {
     if (!item.nickname) return;
     setDownloading(item.id + '-nick');
     const dataUrl = generateNickname(item);
-    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'НИКНЕЙМ');
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
     setDownloading('');
   };
 
