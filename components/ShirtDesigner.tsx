@@ -63,7 +63,7 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
         <Rect x={x} y={y} width={width} height={height}
           fillLinearGradientStartPoint={{ x: 0, y: 0 }}
           fillLinearGradientEndPoint={{ x: 0, y: height }}
-          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2]]}
+          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]}
           cornerRadius={16} />
         {Array.from({ length: 40 }).map((_, i) => (
           <Rect key={i} x={x + (i * 73 % width)} y={y + (i * 53 % height)}
@@ -82,7 +82,7 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
           width={cellSize} height={cellSize} fill={(row + col) % 2 === 0 ? bg.colors[0] : bg.colors[1]} opacity={0.18} />);
       }
     }
-    return <><Rect x={x} y={y} width={width} height={height} fill={bg.colors[2]} cornerRadius={16} />{cells}</>;
+    return <><Rect x={x} y={y} width={width} height={height} fill={bg.colors[2] ?? bg.colors[1]} cornerRadius={16} />{cells}</>;
   }
 
   if (bgId === 'city') {
@@ -102,7 +102,7 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
         <Rect x={x} y={y} width={width} height={height}
           fillLinearGradientStartPoint={{ x: 0, y: 0 }}
           fillLinearGradientEndPoint={{ x: 0, y: height }}
-          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2]]}
+          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]}
           cornerRadius={16} />
         {buildings.map((b, i) => (
           <Rect key={i} x={x+b.bx} y={y+height-b.bh} width={b.bw} height={b.bh} fill="#050a18" opacity={0.9} />
@@ -118,7 +118,7 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
       fillLinearGradientColorStops={
         bg.colors.length === 2
           ? [0, bg.colors[0], 1, bg.colors[1]]
-          : [0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2]]
+          : [0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]
       }
       cornerRadius={16} />
   );
@@ -371,18 +371,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 ))}
               </div>
             </div>
- <div>
-   <label className={robloxLabel}>Фон персонажа</label>
-   <div className="grid grid-cols-5 gap-1.5">
-     {BACKGROUNDS.map((bg) => (
-       <button key={bg.id} onClick={() => setSelectedBg(bg.id)}
-        className={`rounded-xl border-2 py-2 px-1 text-[10px] font-black transition-all ${selectedBg===bg.id?'border-zinc-900 shadow-[2px_2px_0px_#18181b]':'border-zinc-300 hover:border-zinc-600'}`}
-        style={{ background: bg.colors ? `linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[bg.colors.length-1]})` : '#f4f4f5' }}>
-        <span className={`block text-center leading-tight ${bg.colors&&bg.id!=='yellow'?'text-white drop-shadow-sm':'text-zinc-900'}`}>{bg.label}</span>
-       </button>
-     ))}
-   </div>
- </div>
+
             <div>
               <label className={robloxLabel}>Фон персонажа</label>
               <div className="grid grid-cols-5 gap-1.5">
