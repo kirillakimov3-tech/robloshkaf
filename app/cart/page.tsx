@@ -22,6 +22,7 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [step, setStep] = useState<Step>('cart');
   const [submitting, setSubmitting] = useState(false);
+  const [robloxUsername, setRobloxUsername] = useState<string>('');
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -39,6 +40,14 @@ export default function CartPage() {
     } catch {
       setItems([]);
     }
+    // Fetch roblox username
+    fetch('/api/roblox/avatar', { credentials: 'include', cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.user?.preferred_username || data?.user?.name) {
+          setRobloxUsername(data.user.preferred_username || data.user.name);
+        }
+      }).catch(() => {});
   }, []);
 
   const totalCount = useMemo(() => items.length, [items]);
@@ -74,7 +83,7 @@ export default function CartPage() {
       const res = await fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, items }),
+        body: JSON.stringify({ ...form, robloxUsername, items }),
       });
       if (res.ok) {
         clearCart();

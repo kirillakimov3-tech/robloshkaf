@@ -9,12 +9,11 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, email, address, comment, items } = body;
+    const { name, phone, email, address, comment, robloxUsername, items } = body;
 
-    // Сохраняем заказ в Supabase
     const { data: order, error } = await supabase
       .from('orders')
-      .insert({ name, phone, email, address, comment, items })
+      .insert({ name, phone, email, address, comment, roblox_username: robloxUsername, items })
       .select()
       .single();
 
@@ -23,7 +22,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Отправляем email через Resend
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'kirillakimov3@gmail.com';
 
@@ -51,6 +49,7 @@ export async function POST(req: NextRequest) {
                 <tr><td style="padding:5px 0;font-weight:700">Телефон:</td><td>${phone}</td></tr>
                 <tr><td style="padding:5px 0;font-weight:700">Email:</td><td>${email}</td></tr>
                 <tr><td style="padding:5px 0;font-weight:700">Адрес:</td><td>${address}</td></tr>
+                <tr><td style="padding:5px 0;font-weight:700">Roblox:</td><td>${robloxUsername || '—'}</td></tr>
                 ${comment ? `<tr><td style="padding:5px 0;font-weight:700">Комментарий:</td><td>${comment}</td></tr>` : ''}
               </table>
             </div>
@@ -75,10 +74,7 @@ export async function POST(req: NextRequest) {
 
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: 'Роблошкаф <onboarding@resend.dev>',
           to: [ADMIN_EMAIL],
