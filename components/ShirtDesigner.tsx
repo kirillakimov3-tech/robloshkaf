@@ -371,7 +371,18 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 ))}
               </div>
             </div>
-
+ <div>
+   <label className={robloxLabel}>Фон персонажа</label>
+   <div className="grid grid-cols-5 gap-1.5">
+     {BACKGROUNDS.map((bg) => (
+       <button key={bg.id} onClick={() => setSelectedBg(bg.id)}
+        className={`rounded-xl border-2 py-2 px-1 text-[10px] font-black transition-all ${selectedBg===bg.id?'border-zinc-900 shadow-[2px_2px_0px_#18181b]':'border-zinc-300 hover:border-zinc-600'}`}
+        style={{ background: bg.colors ? `linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[bg.colors.length-1]})` : '#f4f4f5' }}>
+        <span className={`block text-center leading-tight ${bg.colors&&bg.id!=='yellow'?'text-white drop-shadow-sm':'text-zinc-900'}`}>{bg.label}</span>
+       </button>
+     ))}
+   </div>
+ </div>
             <div>
               <label className={robloxLabel}>Фон персонажа</label>
               <div className="grid grid-cols-5 gap-1.5">
