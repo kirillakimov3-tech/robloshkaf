@@ -496,48 +496,50 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
 
           <div className="rounded-[32px] bg-white p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
-              {/* Layer 1: shirt background (uses globalCompositeOperation, no draggable) */}
+              {/* Layer 1: shirt mockup (no bg) */}
               <Layer listening={false}>
-                {selectedBg !== 'none' && mockupImage && (
-                  <>
-                    <KonvaImage
-                      image={mockupImage}
-                      x={mockupX} y={mockupY}
-                      width={mockupSize.width} height={mockupSize.height}
-                    />
-                    <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                    <KonvaImage
-                      image={mockupImage}
-                      x={mockupX} y={mockupY}
-                      width={mockupSize.width} height={mockupSize.height}
-                      globalCompositeOperation="destination-in"
-                    />
-                  </>
-                )}
-                {selectedBg === 'none' && mockupImage && (
+                {mockupImage && (
                   <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
               </Layer>
-              {/* Layer 2: interactive elements (avatar, nickname, overlay) */}
-              <Layer>
+              {/* Layer 2: image background clipped to shirt shape via destination-in */}
+              <Layer listening={false}>
                 {(() => {
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
-                  if (bgDef?.image) {
-                  return (
-                    <Group
-                      clipX={PRINT_AREA.x} clipY={PRINT_AREA.y}
-                      clipWidth={PRINT_AREA.width} clipHeight={PRINT_AREA.height}
-                    >
-                      <ImageBackgroundLayer
-                        src={bgDef.image}
-                        x={PRINT_AREA.x} y={PRINT_AREA.y}
-                        width={PRINT_AREA.width} height={PRINT_AREA.height}
-                      />
-                    </Group>
-                  );
+                  if (bgDef?.image && mockupImage) {
+                    const rainbowRatio = 1817 / 961;
+                    const bgW = mockupSize.width;
+                    const bgH = bgW / rainbowRatio;
+                    const bgX = mockupX;
+                    const bgY = mockupY + (mockupSize.height - bgH) * 0.75;
+                    return (
+                      <>
+                        <ImageBackgroundLayer src={bgDef.image} x={bgX} y={bgY} width={bgW} height={bgH} />
+                        <KonvaImage
+                          image={mockupImage} x={mockupX} y={mockupY}
+                          width={mockupSize.width} height={mockupSize.height}
+                          globalCompositeOperation="destination-in"
+                        />
+                      </>
+                    );
+                  }
+                  if (bgDef?.colors && mockupImage) {
+                    return (
+                      <>
+                        <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                        <KonvaImage
+                          image={mockupImage} x={mockupX} y={mockupY}
+                          width={mockupSize.width} height={mockupSize.height}
+                          globalCompositeOperation="destination-in"
+                        />
+                      </>
+                    );
                   }
                   return null;
                 })()}
+              </Layer>
+              {/* Layer 3: interactive elements (avatar, nickname, overlay) */}
+              <Layer>
                 {avatarImage ? (
                   <KonvaImage image={avatarImage} x={x} y={y} width={avatarWidth} height={avatarHeight} draggable opacity={0.98} onDragEnd={handleAvatarDragEnd} />
                 ) : (
