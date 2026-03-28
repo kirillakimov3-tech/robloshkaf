@@ -215,20 +215,20 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     const stage = stageRef.current;
     if (!stage) return;
 
-    // DTF print canvas — 300 DPI at 30cm width = 3543px
     const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
     const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
     const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
 
-    const printCanvas = document.createElement('canvas');
-    printCanvas.width = PRINT_PX;
-    printCanvas.height = PRINT_PY;
-    const ctx = printCanvas.getContext('2d')!;
-    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
-
     const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
 
-    // 1. Draw image background (e.g. rainbow) if selected
+    // === FILE 1: Avatar + Background ===
+    const mainCanvas = document.createElement('canvas');
+    mainCanvas.width = PRINT_PX;
+    mainCanvas.height = PRINT_PY;
+    const mainCtx = mainCanvas.getContext('2d')!;
+    mainCtx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+
+    // Draw image background (e.g. rainbow)
     if (bgDef?.image) {
       const rainbowRatio = 1817 / 961;
       const bgW = PRINT_AREA.width * 0.693;
@@ -239,7 +239,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
         const bgImg = new window.Image();
         bgImg.crossOrigin = 'anonymous';
         bgImg.onload = () => {
-          ctx.drawImage(
+          mainCtx.drawImage(
             bgImg,
             (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
             (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
@@ -253,9 +253,9 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       });
     }
 
-    // 2. Draw avatar
+    // Draw avatar
     if (avatarImage) {
-      ctx.drawImage(
+      mainCtx.drawImage(
         avatarImage,
         (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
         (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
@@ -264,27 +264,42 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       );
     }
 
-    // 3. Draw nickname text
+    const mainPngUrl = mainCanvas.toDataURL('image/png');
+    const mainLink = document.createElement('a');
+    mainLink.download = `robloshkaf-print-main-${username || 'user'}-${shirtSize}.png`;
+    mainLink.href = mainPngUrl;
+    mainLink.click();
+
+    // === FILE 2: Nickname only ===
     if (showNickname && label.trim()) {
+      const nickCanvas = document.createElement('canvas');
+      nickCanvas.width = PRINT_PX;
+      nickCanvas.height = PRINT_PY;
+      const nickCtx = nickCanvas.getContext('2d')!;
+      nickCtx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+
       const fontSize = nicknameSize * PRINT_DPI_SCALE;
-      ctx.save();
-      ctx.font = `bold ${fontSize}px ${nicknameFont}`;
-      ctx.fillStyle = textFill;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      nickCtx.save();
+      nickCtx.font = `bold ${fontSize}px ${nicknameFont}`;
+      nickCtx.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
+      nickCtx.textAlign = 'center';
+      nickCtx.textBaseline = 'middle';
       const tx = (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE;
       const ty = (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE;
-      ctx.translate(tx, ty);
-      ctx.rotate((nicknameRotation * Math.PI) / 180);
-      ctx.fillText(label, 0, 0);
-      ctx.restore();
+      nickCtx.translate(tx, ty);
+      nickCtx.rotate((nicknameRotation * Math.PI) / 180);
+      nickCtx.fillText(label, 0, 0);
+      nickCtx.restore();
+
+      const nickPngUrl = nickCanvas.toDataURL('image/png');
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
+      const nickLink = document.createElement('a');
+      nickLink.download = `robloshkaf-print-nickname-${username || 'user'}-${shirtSize}.png`;
+      nickLink.href = nickPngUrl;
+      nickLink.click();
     }
 
-    const printPngUrl = printCanvas.toDataURL('image/png');
-    const pngLink = document.createElement('a');
-    pngLink.download = `robloshkaf-print-${username || 'user'}-${shirtSize}.png`;
-    pngLink.href = printPngUrl;
-    pngLink.click();
+    const printPngUrl = mainPngUrl;
 
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -565,7 +580,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image && mockupImage) {
                     const rainbowRatio = 1817 / 961;
-                    const bgW = PRINT_AREA.width * 0.692;
+                    const bgW = PRINT_AREA.width * 0.9;
                     const bgH = bgW / rainbowRatio;
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
