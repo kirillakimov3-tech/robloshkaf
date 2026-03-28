@@ -66,12 +66,22 @@ const BACKGROUNDS: Record<string, string | null> = {
 };
 
 const downloadBlob = (dataUrl: string, filename: string) => {
+  // Convert base64 dataUrl to Blob to force PNG download (not PDF)
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  const blob = new Blob([u8arr], { type: mime });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = dataUrl;
+  a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
