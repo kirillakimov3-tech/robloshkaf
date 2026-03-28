@@ -483,9 +483,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
           <div className="rounded-[32px] bg-white p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
               <Layer>
-                {mockupImage && (
-                  <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                )}
                 {selectedBg !== 'none' && (
                   <BackgroundLayer bgId={selectedBg} x={BG_AREA.x} y={BG_AREA.y} width={BG_AREA.width} height={BG_AREA.height} />
                 )}
@@ -506,6 +503,9 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     fontSize={nicknameSize} fontStyle="bold" fill={textFill}
                     fontFamily={nicknameFont} rotation={nicknameRotation}
                     draggable onDragEnd={handleNicknameDragEnd} />
+                )}
+                {mockupImage && (
+                  <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
               </Layer>
             </Stage>
