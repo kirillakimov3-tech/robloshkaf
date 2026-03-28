@@ -62,7 +62,7 @@ const PY = Math.round(PRINT_H * DPI_SCALE);
 const RAINBOW_RATIO = 1817 / 961;
 
 const BACKGROUNDS: Record<string, string | null> = {
-  rainbow: '/backgrounds/rainbow-transparent.png',
+  rainbow: 'https://robloshkaf.vercel.app/backgrounds/rainbow-transparent.png',
 };
 
 const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
