@@ -483,10 +483,10 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
 
           <div className="rounded-[32px] bg-white p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
-              <Layer>
+              {/* Layer 1: shirt background (uses globalCompositeOperation, no draggable) */}
+              <Layer listening={false}>
                 {selectedBg !== 'none' && mockupImage && (
                   <>
-                    {/* Render background clipped to shirt shape using destination-in */}
                     <KonvaImage
                       image={mockupImage}
                       x={mockupX} y={mockupY}
@@ -504,6 +504,9 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 {selectedBg === 'none' && mockupImage && (
                   <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                 )}
+              </Layer>
+              {/* Layer 2: interactive elements (avatar, nickname, overlay) */}
+              <Layer>
                 {avatarImage ? (
                   <KonvaImage image={avatarImage} x={x} y={y} width={avatarWidth} height={avatarHeight} draggable opacity={0.98} onDragEnd={handleAvatarDragEnd} />
                 ) : (
@@ -523,7 +526,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     draggable onDragEnd={handleNicknameDragEnd} />
                 )}
                 {selectedBg !== 'none' && overlayImage && (
-                  <KonvaImage image={overlayImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+                  <KonvaImage image={overlayImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} listening={false} />
                 )}
               </Layer>
             </Stage>
