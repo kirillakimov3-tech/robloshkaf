@@ -125,10 +125,15 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
   );
 }
 
-function ImageBackgroundLayer({ src, x, y, width, height }: { src: string; x: number; y: number; width: number; height: number }) {
+function ImageBackgroundLayer({ src, x, y, width, height, clipX, clipY, clipW, clipH }: { src: string; x: number; y: number; width: number; height: number; clipX: number; clipY: number; clipW: number; clipH: number }) {
   const [img] = useImage(src, 'anonymous');
   if (!img) return null;
-  return <KonvaImage image={img} x={x} y={y} width={width} height={height} />;
+  return (
+    <KonvaImage
+      image={img} x={x} y={y} width={width} height={height}
+      clipX={clipX} clipY={clipY} clipWidth={clipW} clipHeight={clipH}
+    />
+  );
 }
 
 export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, isAdmin = false }: Props) {
@@ -181,12 +186,12 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     height: mockupSize.height * 0.5,
   };
 
-const BG_AREA = {
-    x: mockupX + mockupSize.width * 0.31,
-    y: mockupY + mockupSize.height * 0.28,
-    width: mockupSize.width * 0.38,
-    height: mockupSize.height * 0.42,
-};
+  const BG_AREA = {
+    x: mockupX + mockupSize.width * 0.18,
+    y: mockupY + mockupSize.height * 0.1,
+    width: mockupSize.width * 0.64,
+    height: mockupSize.height * 0.82,
+  };
 
   const textFill = shirtColor === 'black' ? '#ffffff' : '#111111';
 
@@ -523,7 +528,13 @@ const BG_AREA = {
                 {(() => {
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image) {
-                    return <ImageBackgroundLayer src={bgDef.image} x={BG_AREA.x} y={BG_AREA.y} width={BG_AREA.width} height={BG_AREA.height} />;
+                  return <ImageBackgroundLayer
+                    src={bgDef.image}
+                    x={PRINT_AREA.x} y={PRINT_AREA.y}
+                    width={PRINT_AREA.width} height={PRINT_AREA.height}
+                    clipX={PRINT_AREA.x} clipY={PRINT_AREA.y}
+                    clipW={PRINT_AREA.width} clipH={PRINT_AREA.height}
+                  />;
                   }
                   return null;
                 })()}
