@@ -195,6 +195,13 @@ export default function AdminPage() {
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
   };
 
+  const deleteOrder = async (id: string) => {
+    if (!confirm('Удалить заказ? Это действие нельзя отменить.')) return;
+    await supabase.from('orders').delete().eq('id', id);
+    setOrders(prev => prev.filter(o => o.id !== id));
+    if (selected?.id === id) setSelected(null);
+  };
+
   const updateInventory = async (id: string, field: 'in_stock' | 'quantity', value: boolean | number) => {
     await supabase.from('inventory').update({ [field]: value }).eq('id', id);
     setInventory(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
@@ -299,6 +306,10 @@ export default function AdminPage() {
                       <button key={key} onClick={() => updateStatus(selected.id, key)} className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{label}</button>
                     ))}
                   </div>
+                  <button onClick={() => deleteOrder(selected.id)}
+                    className="ml-auto rounded-xl border-2 border-red-500 bg-red-500 px-3 py-1.5 text-xs font-black text-white hover:bg-red-600 transition">
+                    🗑 Удалить
+                  </button>
                 </div>
 
                 <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5">
