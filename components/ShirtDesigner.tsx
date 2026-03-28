@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer, Text, Image as KonvaImage, Rect } from 'react-konva';
+import { Stage, Layer, Text, Image as KonvaImage, Rect, Group } from 'react-konva';
 import useImage from 'use-image';
 
 type Props = {
@@ -125,15 +125,10 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
   );
 }
 
-function ImageBackgroundLayer({ src, x, y, width, height, clipX, clipY, clipW, clipH }: { src: string; x: number; y: number; width: number; height: number; clipX: number; clipY: number; clipW: number; clipH: number }) {
+function ImageBackgroundLayer({ src, x, y, width, height }: { src: string; x: number; y: number; width: number; height: number }) {
   const [img] = useImage(src, 'anonymous');
   if (!img) return null;
-  return (
-    <KonvaImage
-      image={img} x={x} y={y} width={width} height={height}
-      clipX={clipX} clipY={clipY} clipWidth={clipW} clipHeight={clipH}
-    />
-  );
+  return <KonvaImage image={img} x={x} y={y} width={width} height={height} />;
 }
 
 export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, isAdmin = false }: Props) {
@@ -528,13 +523,18 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 {(() => {
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image) {
-                  return <ImageBackgroundLayer
-                    src={bgDef.image}
-                    x={PRINT_AREA.x} y={PRINT_AREA.y}
-                    width={PRINT_AREA.width} height={PRINT_AREA.height}
-                    clipX={PRINT_AREA.x} clipY={PRINT_AREA.y}
-                    clipW={PRINT_AREA.width} clipH={PRINT_AREA.height}
-                  />;
+                  return (
+                    <Group
+                      clipX={PRINT_AREA.x} clipY={PRINT_AREA.y}
+                      clipWidth={PRINT_AREA.width} clipHeight={PRINT_AREA.height}
+                    >
+                      <ImageBackgroundLayer
+                        src={bgDef.image}
+                        x={PRINT_AREA.x} y={PRINT_AREA.y}
+                        width={PRINT_AREA.width} height={PRINT_AREA.height}
+                      />
+                    </Group>
+                  );
                   }
                   return null;
                 })()}
