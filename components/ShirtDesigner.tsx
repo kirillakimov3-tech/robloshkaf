@@ -222,18 +222,17 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       setTimeout(resolve, 1000);
     });
 
-  const exportMockup = async () => {
+  const exportAvatarBg = async () => {
     const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
     const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
     const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
     const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
 
-    // === FILE 1: Фон + Аватар ===
-    const mainCanvas = document.createElement('canvas');
-    mainCanvas.width = PRINT_PX;
-    mainCanvas.height = PRINT_PY;
-    const mc = mainCanvas.getContext('2d')!;
-    mc.clearRect(0, 0, PRINT_PX, PRINT_PY);
+    const canvas = document.createElement('canvas');
+    canvas.width = PRINT_PX;
+    canvas.height = PRINT_PY;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
 
     if (bgDef?.image) {
       const rainbowRatio = 1817 / 961;
@@ -245,7 +244,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          mc.drawImage(img,
+          ctx.drawImage(img,
             (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
             (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
             bgW * PRINT_DPI_SCALE,
@@ -258,44 +257,46 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     }
 
     if (avatarImage) {
-      mc.drawImage(avatarImage,
+      ctx.drawImage(avatarImage,
         (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
         (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
         avatarWidth * PRINT_DPI_SCALE,
         avatarHeight * PRINT_DPI_SCALE);
     }
 
-    await downloadBlob(
-      mainCanvas.toDataURL('image/png'),
-      `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`
+    await downloadBlob(canvas.toDataURL('image/png'), `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
+  };
+
+  const exportNickname = async () => {
+    if (!showNickname || !label.trim()) return;
+    const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
+    const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
+    const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = PRINT_PX;
+    canvas.height = PRINT_PY;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+    const fontSize = nicknameSize * PRINT_DPI_SCALE;
+    ctx.save();
+    ctx.font = `bold ${fontSize}px ${nicknameFont}`;
+    ctx.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.translate(
+      (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE,
+      (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE
     );
+    ctx.rotate((nicknameRotation * Math.PI) / 180);
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
 
-    // === FILE 2: Только никнейм ===
-    if (showNickname && label.trim()) {
-      const nickCanvas = document.createElement('canvas');
-      nickCanvas.width = PRINT_PX;
-      nickCanvas.height = PRINT_PY;
-      const nc = nickCanvas.getContext('2d')!;
-      nc.clearRect(0, 0, PRINT_PX, PRINT_PY);
-      const fontSize = nicknameSize * PRINT_DPI_SCALE;
-      nc.save();
-      nc.font = `bold ${fontSize}px ${nicknameFont}`;
-      nc.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
-      nc.textAlign = 'center';
-      nc.textBaseline = 'middle';
-      nc.translate(
-        (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE,
-        (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE
-      );
-      nc.rotate((nicknameRotation * Math.PI) / 180);
-      nc.fillText(label, 0, 0);
-      nc.restore();
+    await downloadBlob(canvas.toDataURL('image/png'), `print-2-nickname-${username || 'user'}-${shirtSize}.png`);
+  };
 
-      await downloadBlob(
-        nickCanvas.toDataURL('image/png'),
-        `print-2-nickname-${username || 'user'}-${shirtSize}.png`
-      );
-    }
+  const exportMockup = async () => {
+    await exportAvatarBg();
   };
 
   const animateToCart = () => {
@@ -499,10 +500,16 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 🛒 Добавить в корзину
               </button>
               {isAdmin && (
-                <button onClick={exportMockup}
-                  className="w-full rounded-2xl border-2 border-zinc-900 bg-yellow-400 px-4 py-3.5 font-black text-zinc-900 shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all">
-                  📥 Скачать макет (PNG + PDF)
-                </button>
+                <>
+                  <button onClick={exportAvatarBg}
+                    className="w-full rounded-2xl border-2 border-zinc-900 bg-yellow-400 px-4 py-3.5 font-black text-zinc-900 shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all">
+                    📥 Скачать: Фон + Аватар
+                  </button>
+                  <button onClick={exportNickname}
+                    className="w-full rounded-2xl border-2 border-zinc-900 bg-yellow-400 px-4 py-3.5 font-black text-zinc-900 shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all">
+                    📥 Скачать: Никнейм
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -521,7 +528,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image && mockupImage) {
                     const rainbowRatio = 1817 / 961;
-                    const bgW = PRINT_AREA.width * 0.69;
+                    const bgW = PRINT_AREA.width * 0.689;
                     const bgH = bgW / rainbowRatio;
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
