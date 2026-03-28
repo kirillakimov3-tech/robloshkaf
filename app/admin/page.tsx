@@ -23,8 +23,6 @@ type OrderItem = {
   avatarUrl?: string;
   background?: string;
   previewDataUrl?: string;
-  printAvatarBgUrl?: string;
-  printNicknameUrl?: string;
 };
 
 type Order = {
@@ -56,6 +54,16 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const SIZES = ['S', 'M', 'L', 'XL'];
+const PRINT_W = 530; // approx PRINT_AREA.width in stage coords
+const PRINT_H = 520; // approx PRINT_AREA.height
+const DPI_SCALE = 3543 / PRINT_W;
+const PX = Math.round(PRINT_W * DPI_SCALE);
+const PY = Math.round(PRINT_H * DPI_SCALE);
+const RAINBOW_RATIO = 1817 / 961;
+
+const BACKGROUNDS: Record<string, string | null> = {
+  rainbow: '/backgrounds/rainbow-transparent.png',
+};
 
 const downloadBlob = (dataUrl: string, filename: string) => {
   const a = document.createElement('a');
@@ -66,26 +74,87 @@ const downloadBlob = (dataUrl: string, filename: string) => {
   document.body.removeChild(a);
 };
 
+const loadImage = (src: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+const generateAvatarBg = async (item: OrderItem): Promise<string> => {
+  const canvas = document.createElement('canvas');
+  canvas.width = PX; canvas.height = PY;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, PX, PY);
+
+  // Draw background image if exists
+  const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
+  if (bgImageSrc) {
+    try {
+      const bgImg = await loadImage(bgImageSrc);
+      const bgW = PRINT_W * 0.693;
+      const bgH = bgW / RAINBOW_RATIO;
+      const bgX = (PRINT_W - bgW) / 2;
+      const bgY = PRINT_H * 0.18;
+      ctx.drawImage(bgImg, bgX * DPI_SCALE, bgY * DPI_SCALE, bgW * DPI_SCALE, bgH * DPI_SCALE);
+    } catch {}
+  }
+
+  // Draw avatar
+  if (item.avatarUrl) {
+    try {
+      const avatarImg = await loadImage(item.avatarUrl);
+      const avatarW = (item.avatarType === 'head' ? 276 : 258) * 0.92;
+      const avatarH = (item.avatarType === 'head' ? 276 : 331) * 0.92;
+      const ax = (PRINT_W - avatarW) / 2;
+      const ay = (PRINT_H - avatarH) / 2 - 35;
+      ctx.drawImage(avatarImg, ax * DPI_SCALE, ay * DPI_SCALE, avatarW * DPI_SCALE, avatarH * DPI_SCALE);
+    } catch {}
+  }
+
+  return canvas.toDataURL('image/png');
+};
+
+const generateNickname = (item: OrderItem): string => {
+  const canvas = document.createElement('canvas');
+  canvas.width = PX; canvas.height = PY;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, PX, PY);
+
+  if (item.nickname) {
+    const fontSize = (item.nicknameSize || 30) * DPI_SCALE;
+    ctx.save();
+    ctx.font = `bold ${fontSize}px ${item.nicknameFont || 'Arial'}`;
+    ctx.fillStyle = item.shirtColor === 'black' ? '#ffffff' : '#111111';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.translate(PX / 2, PY * 0.82);
+    ctx.rotate(((item.nicknameRotation || 0) * Math.PI) / 180);
+    ctx.fillText(item.nickname, 0, 0);
+    ctx.restore();
+  }
+
+  return canvas.toDataURL('image/png');
+};
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [tab, setTab] = useState<'orders' | 'inventory'>('orders');
+  const [downloading, setDownloading] = useState<string>('');
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_authed');
-    if (saved === ADMIN_PASSWORD) {
-      setAuthed(true);
-      loadOrders();
-      loadInventory();
-    }
+    if (saved === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); loadInventory(); }
   }, []);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [filter, setFilter] = useState('all');
   const [loadingOrders, setLoadingOrders] = useState(false);
-
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -93,20 +162,14 @@ export default function AdminPage() {
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
       localStorage.setItem('admin_authed', ADMIN_PASSWORD);
-      setAuthed(true);
-      setPasswordError(false);
-      loadOrders();
-      loadInventory();
-    } else {
-      setPasswordError(true);
-    }
+      setAuthed(true); setPasswordError(false); loadOrders(); loadInventory();
+    } else { setPasswordError(true); }
   };
 
   const loadOrders = async () => {
     setLoadingOrders(true);
     const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    setOrders(data || []);
-    setLoadingOrders(false);
+    setOrders(data || []); setLoadingOrders(false);
   };
 
   const loadInventory = async () => {
@@ -136,30 +199,23 @@ export default function AdminPage() {
     setShopOpen(next);
   };
 
-  // Скачать: Фон + Аватар
-  const downloadAvatarBg = (item: OrderItem) => {
-    if (item.printAvatarBgUrl) {
-      downloadBlob(item.printAvatarBgUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
-    } else if (item.previewDataUrl) {
-      // Fallback: скачать превью
-      downloadBlob(item.previewDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
-    } else {
-      alert('Нет файла фон+аватар. Попроси покупателя переоформить заказ.');
-    }
+  const handleDownloadAvatarBg = async (item: OrderItem) => {
+    setDownloading(item.id + '-bg');
+    const dataUrl = await generateAvatarBg(item);
+    downloadBlob(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
+    setDownloading('');
   };
 
-  // Скачать: Никнейм
-  const downloadNickname = (item: OrderItem) => {
-    if (item.printNicknameUrl) {
-      downloadBlob(item.printNicknameUrl, `print-2-nickname-${item.username}-${item.size}.png`);
-    } else {
-      alert('Нет файла никнейма. Попроси покупателя переоформить заказ.');
-    }
+  const handleDownloadNickname = (item: OrderItem) => {
+    if (!item.nickname) return;
+    setDownloading(item.id + '-nick');
+    const dataUrl = generateNickname(item);
+    downloadBlob(dataUrl, `print-2-nickname-${item.username}-${item.size}.png`);
+    setDownloading('');
   };
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
 
-  // ── LOGIN ──
   if (!authed) {
     return (
       <main className="min-h-screen bg-zinc-950 flex items-center justify-center px-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -171,18 +227,10 @@ export default function AdminPage() {
               <p className="text-zinc-500 font-semibold text-sm mt-1">Вход в админку</p>
             </div>
             <div className="space-y-4">
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setPasswordError(false); }}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="Введи пароль"
-                className={`w-full rounded-xl border-2 px-4 py-3 bg-zinc-800 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 transition ${passwordError ? 'border-red-500' : 'border-zinc-600'}`}
-              />
+              <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPasswordError(false); }} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="Введи пароль"
+                className={`w-full rounded-xl border-2 px-4 py-3 bg-zinc-800 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 transition ${passwordError ? 'border-red-500' : 'border-zinc-600'}`} />
               {passwordError && <p className="text-red-400 text-sm font-semibold">Неверный пароль</p>}
-              <button onClick={handleLogin} className="w-full rounded-xl border-2 border-zinc-900 bg-[#E02020] py-3 font-black text-white shadow-[3px_3px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000] transition-all">
-                Войти
-              </button>
+              <button onClick={handleLogin} className="w-full rounded-xl border-2 border-zinc-900 bg-[#E02020] py-3 font-black text-white shadow-[3px_3px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000] transition-all">Войти</button>
             </div>
           </div>
         </div>
@@ -190,7 +238,6 @@ export default function AdminPage() {
     );
   }
 
-  // ── ADMIN ──
   return (
     <main className="min-h-screen bg-zinc-950 text-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
       <div className="border-b-2 border-zinc-800 px-6 py-4 flex items-center justify-between">
@@ -216,43 +263,33 @@ export default function AdminPage() {
           <div className="w-80 border-r-2 border-zinc-800 flex flex-col shrink-0">
             <div className="p-3 border-b border-zinc-800 flex flex-wrap gap-1.5">
               {[['all', 'Все'], ...Object.entries(STATUS_LABELS).map(([k, v]) => [k, v.label])].map(([key, label]) => (
-                <button key={key} onClick={() => setFilter(key)} className={`rounded-lg px-2.5 py-1 text-xs font-black transition ${filter === key ? 'bg-yellow-400 text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-                  {label}
-                </button>
+                <button key={key} onClick={() => setFilter(key)} className={`rounded-lg px-2.5 py-1 text-xs font-black transition ${filter === key ? 'bg-yellow-400 text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{label}</button>
               ))}
             </div>
             <div className="overflow-y-auto flex-1">
-              {loadingOrders ? (
-                <div className="p-6 text-center text-zinc-500 font-semibold text-sm animate-pulse">Загрузка...</div>
-              ) : filtered.length === 0 ? (
-                <div className="p-6 text-center text-zinc-500 font-semibold text-sm">Заказов нет</div>
-              ) : filtered.map(order => (
-                <button key={order.id} onClick={() => setSelected(order)} className={`w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-900 transition ${selected?.id === order.id ? 'bg-zinc-800' : ''}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-black text-sm truncate">{order.name}</span>
-                    <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ml-2 shrink-0 ${STATUS_LABELS[order.status]?.color || 'bg-zinc-700 text-white'}`}>
-                      {STATUS_LABELS[order.status]?.label || order.status}
-                    </span>
-                  </div>
-                  <div className="text-xs text-zinc-500 font-semibold">{order.items.length} шт. · {order.items.map(i => i.size).join(', ')}</div>
-                  <div className="text-xs text-zinc-600 mt-0.5">{new Date(order.created_at).toLocaleString('ru-RU')}</div>
-                </button>
-              ))}
+              {loadingOrders ? <div className="p-6 text-center text-zinc-500 font-semibold text-sm animate-pulse">Загрузка...</div>
+                : filtered.length === 0 ? <div className="p-6 text-center text-zinc-500 font-semibold text-sm">Заказов нет</div>
+                : filtered.map(order => (
+                  <button key={order.id} onClick={() => setSelected(order)} className={`w-full text-left p-4 border-b border-zinc-800 hover:bg-zinc-900 transition ${selected?.id === order.id ? 'bg-zinc-800' : ''}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-sm truncate">{order.name}</span>
+                      <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ml-2 shrink-0 ${STATUS_LABELS[order.status]?.color || 'bg-zinc-700 text-white'}`}>{STATUS_LABELS[order.status]?.label || order.status}</span>
+                    </div>
+                    <div className="text-xs text-zinc-500 font-semibold">{order.items.length} шт. · {order.items.map(i => i.size).join(', ')}</div>
+                    <div className="text-xs text-zinc-600 mt-0.5">{new Date(order.created_at).toLocaleString('ru-RU')}</div>
+                  </button>
+                ))}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
-            {!selected ? (
-              <div className="flex h-full items-center justify-center text-zinc-600 font-semibold">Выбери заказ</div>
-            ) : (
+            {!selected ? <div className="flex h-full items-center justify-center text-zinc-600 font-semibold">Выбери заказ</div> : (
               <div className="max-w-2xl space-y-5">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="font-black text-xl" style={{ fontFamily: "'Fredoka One', sans-serif" }}>Заказ #{selected.id.slice(0, 8)}</h2>
                   <div className="flex gap-2 flex-wrap">
                     {Object.entries(STATUS_LABELS).map(([key, { label, color }]) => (
-                      <button key={key} onClick={() => updateStatus(selected.id, key)} className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-                        {label}
-                      </button>
+                      <button key={key} onClick={() => updateStatus(selected.id, key)} className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -260,14 +297,7 @@ export default function AdminPage() {
                 <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5">
                   <h3 className="font-black text-sm uppercase tracking-widest text-zinc-400 mb-4">👤 Покупатель</h3>
                   <div className="space-y-2">
-                    {[
-                      ['Имя', selected.name],
-                      ['Телефон', selected.phone],
-                      ['Email', selected.email],
-                      ['Адрес', selected.address],
-                      ['Дата', new Date(selected.created_at).toLocaleString('ru-RU')],
-                      ...(selected.comment ? [['Комментарий', selected.comment]] : []),
-                    ].map(([k, v]) => (
+                    {[['Имя', selected.name], ['Телефон', selected.phone], ['Email', selected.email], ['Адрес', selected.address], ['Дата', new Date(selected.created_at).toLocaleString('ru-RU')], ...(selected.comment ? [['Комментарий', selected.comment]] : [])].map(([k, v]) => (
                       <div key={k} className="flex gap-3">
                         <span className="text-sm font-black text-zinc-500 w-28 shrink-0">{k}:</span>
                         <span className="text-sm font-semibold text-zinc-200">{v}</span>
@@ -281,28 +311,20 @@ export default function AdminPage() {
                   <div className="space-y-4">
                     {selected.items.map((item, i) => (
                       <div key={item.id || i} className="rounded-xl border-2 border-zinc-700 bg-zinc-800 p-4 flex gap-4">
-                        {item.previewDataUrl && (
-                          <img src={item.previewDataUrl} alt="превью" className="h-24 w-24 rounded-xl border-2 border-zinc-600 object-contain bg-zinc-700 shrink-0" />
-                        )}
+                        {item.previewDataUrl && <img src={item.previewDataUrl} alt="превью" className="h-24 w-24 rounded-xl border-2 border-zinc-600 object-contain bg-zinc-700 shrink-0" />}
                         <div className="flex-1 space-y-1">
                           <div className="font-black">{item.username}</div>
-                          <div className="text-sm text-zinc-400 font-semibold">
-                            {item.shirtColor === 'white' ? 'Белая' : 'Чёрная'} · {item.size}
-                          </div>
+                          <div className="text-sm text-zinc-400 font-semibold">{item.shirtColor === 'white' ? 'Белая' : 'Чёрная'} · {item.size}</div>
                           {item.nickname && <div className="text-sm text-zinc-400 font-semibold">Никнейм: {item.nickname}</div>}
-                          <div className="flex gap-2 mt-2 flex-wrap">
-                            <button
-                              onClick={() => downloadAvatarBg(item)}
-                              className="inline-flex rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition"
-                            >
-                              📥 Фон + Аватар
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            <button onClick={() => handleDownloadAvatarBg(item)} disabled={downloading === item.id + '-bg'}
+                              className="inline-flex items-center gap-1 rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition disabled:opacity-50">
+                              {downloading === item.id + '-bg' ? '⏳ Генерация...' : '📥 Фон + Аватар'}
                             </button>
                             {item.nickname && (
-                              <button
-                                onClick={() => downloadNickname(item)}
-                                className="inline-flex rounded-xl border-2 border-zinc-500 bg-zinc-700 text-white px-3 py-1.5 text-xs font-black hover:bg-zinc-600 transition"
-                              >
-                                📥 Никнейм
+                              <button onClick={() => handleDownloadNickname(item)} disabled={downloading === item.id + '-nick'}
+                                className="inline-flex items-center gap-1 rounded-xl border-2 border-zinc-500 bg-zinc-700 text-white px-3 py-1.5 text-xs font-black hover:bg-zinc-600 transition disabled:opacity-50">
+                                {downloading === item.id + '-nick' ? '⏳ Генерация...' : '📥 Никнейм'}
                               </button>
                             )}
                           </div>
@@ -322,15 +344,12 @@ export default function AdminPage() {
           <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-6 flex items-center justify-between">
             <div>
               <div className="font-black text-lg">Магазин</div>
-              <div className="text-sm text-zinc-500 font-semibold">
-                {shopOpen ? '✅ Открыт — покупатели могут делать заказы' : '🔴 Закрыт — заказы отключены'}
-              </div>
+              <div className="text-sm text-zinc-500 font-semibold">{shopOpen ? '✅ Открыт — покупатели могут делать заказы' : '🔴 Закрыт — заказы отключены'}</div>
             </div>
             <button onClick={toggleShop} className={`rounded-xl border-2 border-zinc-700 px-5 py-2.5 font-black transition shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] ${shopOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
               {shopOpen ? 'Закрыть магазин' : 'Открыть магазин'}
             </button>
           </div>
-
           {(['white', 'black'] as const).map(color => (
             <div key={color} className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-5">
               <h3 className="font-black text-lg mb-4 flex items-center gap-2">
@@ -342,7 +361,7 @@ export default function AdminPage() {
                   const item = inventory.find(i => i.color === color && i.size === size);
                   if (!item) return null;
                   return (
-                    <div key={size} className={`rounded-xl border-2 p-3 transition ${item.in_stock ? 'border-zinc-600 bg-zinc-800' : 'border-zinc-700 bg-zinc-850 opacity-60'}`}>
+                    <div key={size} className={`rounded-xl border-2 p-3 transition ${item.in_stock ? 'border-zinc-600 bg-zinc-800' : 'border-zinc-700 opacity-60'}`}>
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-black text-lg">{size}</span>
                         <button onClick={() => updateInventory(item.id, 'in_stock', !item.in_stock)} className={`rounded-lg px-2 py-1 text-xs font-black border transition ${item.in_stock ? 'border-green-500 text-green-400 hover:bg-green-500 hover:text-white' : 'border-red-500 text-red-400 hover:bg-red-500 hover:text-white'}`}>
