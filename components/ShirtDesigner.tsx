@@ -39,16 +39,17 @@ const FONTS = [
 type FontId = typeof FONTS[number]['id'];
 
 const BACKGROUNDS = [
-  { id: 'none',   label: 'Нет',      colors: null },
-  { id: 'sunset', label: 'Закат',    colors: ['#FF6B35', '#F7C59F', '#FFDA77'] },
-  { id: 'sky',    label: 'Небо',     colors: ['#4FC3F7', '#81D4FA', '#E1F5FE'] },
-  { id: 'night',  label: 'Ночь',     colors: ['#0D1B2A', '#1B263B', '#415A77'] },
-  { id: 'stars',  label: 'Звёзды',   colors: ['#0a0a1a', '#1a1a3e', '#0d0d2b'] },
-  { id: 'pixel',  label: 'Пиксель',  colors: ['#E02020', '#FFD93D', '#18181b'] },
-  { id: 'city',   label: 'Город',    colors: ['#1a1a2e', '#16213e', '#0f3460'] },
-  { id: 'red',    label: 'Красный',  colors: ['#E02020', '#c41010'] },
-  { id: 'yellow', label: 'Жёлтый',   colors: ['#FFD93D', '#FFC107'] },
-  { id: 'blue',   label: 'Синий',    colors: ['#1565C0', '#1976D2'] },
+  { id: 'none',    label: 'Нет',      colors: null,       image: null },
+  { id: 'rainbow', label: 'Радуга',   colors: null,       image: '/backgrounds/rainbow-transparent.png' },
+  { id: 'sunset',  label: 'Закат',    colors: ['#FF6B35', '#F7C59F', '#FFDA77'], image: null },
+  { id: 'sky',     label: 'Небо',     colors: ['#4FC3F7', '#81D4FA', '#E1F5FE'], image: null },
+  { id: 'night',   label: 'Ночь',     colors: ['#0D1B2A', '#1B263B', '#415A77'], image: null },
+  { id: 'stars',   label: 'Звёзды',   colors: ['#0a0a1a', '#1a1a3e', '#0d0d2b'], image: null },
+  { id: 'pixel',   label: 'Пиксель',  colors: ['#E02020', '#FFD93D', '#18181b'], image: null },
+  { id: 'city',    label: 'Город',    colors: ['#1a1a2e', '#16213e', '#0f3460'], image: null },
+  { id: 'red',     label: 'Красный',  colors: ['#E02020', '#c41010'],            image: null },
+  { id: 'yellow',  label: 'Жёлтый',   colors: ['#FFD93D', '#FFC107'],            image: null },
+  { id: 'blue',    label: 'Синий',    colors: ['#1565C0', '#1976D2'],            image: null },
 ] as const;
 
 type BgId = typeof BACKGROUNDS[number]['id'];
@@ -122,6 +123,12 @@ function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number;
       }
       cornerRadius={16} />
   );
+}
+
+function ImageBackgroundLayer({ src, x, y, width, height }: { src: string; x: number; y: number; width: number; height: number }) {
+  const [img] = useImage(src, 'anonymous');
+  if (!img) return null;
+  return <KonvaImage image={img} x={x} y={y} width={width} height={height} />;
 }
 
 export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, isAdmin = false }: Props) {
@@ -379,8 +386,14 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 {BACKGROUNDS.map((bg) => (
                   <button key={bg.id} onClick={() => setSelectedBg(bg.id)}
                     className={`rounded-xl border-2 py-2 px-1 text-[10px] font-black transition-all ${selectedBg === bg.id ? 'border-zinc-900 shadow-[2px_2px_0px_#18181b]' : 'border-zinc-300 hover:border-zinc-600'}`}
-                    style={{ background: bg.colors ? `linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[bg.colors.length - 1]})` : '#f4f4f5' }}>
-                    <span className={`block text-center leading-tight ${bg.colors && bg.id !== 'yellow' ? 'text-white drop-shadow-sm' : 'text-zinc-900'}`}>{bg.label}</span>
+                    style={{
+                      background: bg.image
+                        ? `url(${bg.image}) center/cover`
+                        : bg.colors
+                          ? `linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[bg.colors.length - 1]})`
+                          : '#f4f4f5'
+                    }}>
+                    <span className={`block text-center leading-tight ${bg.colors && bg.id !== 'yellow' ? 'text-white drop-shadow-sm' : bg.image ? 'text-white drop-shadow-sm' : 'text-zinc-900'}`}>{bg.label}</span>
                   </button>
                 ))}
               </div>
@@ -507,6 +520,13 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
               </Layer>
               {/* Layer 2: interactive elements (avatar, nickname, overlay) */}
               <Layer>
+                {(() => {
+                  const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
+                  if (bgDef?.image) {
+                    return <ImageBackgroundLayer src={bgDef.image} x={BG_AREA.x} y={BG_AREA.y} width={BG_AREA.width} height={BG_AREA.height} />;
+                  }
+                  return null;
+                })()}
                 {avatarImage ? (
                   <KonvaImage image={avatarImage} x={x} y={y} width={avatarWidth} height={avatarHeight} draggable opacity={0.98} onDragEnd={handleAvatarDragEnd} />
                 ) : (
