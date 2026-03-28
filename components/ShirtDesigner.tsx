@@ -182,9 +182,9 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
   };
 
 const BG_AREA = {
-    x: mockupX + mockupSize.width * 0.29,
+    x: mockupX + mockupSize.width * 0.31,
     y: mockupY + mockupSize.height * 0.28,
-    width: mockupSize.width * 0.42,
+    width: mockupSize.width * 0.38,
     height: mockupSize.height * 0.42,
 };
 
