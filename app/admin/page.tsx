@@ -65,23 +65,21 @@ const BACKGROUNDS: Record<string, string | null> = {
   rainbow: '/backgrounds/rainbow-transparent.png',
 };
 
-const downloadBlob = (dataUrl: string, filename: string) => {
-  // Convert base64 dataUrl to Blob to force PNG download (not PDF)
-  const arr = dataUrl.split(',');
-  const mime = arr[0].match(/:(.*?);/)![1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  const blob = new Blob([u8arr], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  document.head.appendChild(script);
+  await new Promise<void>(resolve => { script.onload = () => resolve(); });
+  const { jsPDF } = (window as any).jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.setFillColor(24, 24, 27); doc.rect(0, 0, 210, 20, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+  doc.text(`РОБЛОШКАФ — ${label}`, 10, 13);
+  // Center image on page
+  doc.addImage(dataUrl, 'PNG', 30, 25, 150, 150);
+  doc.setFontSize(7); doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'normal');
+  doc.text('Прозрачный фон — для DTF печати', 30, 180);
+  doc.save(filename);
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
@@ -212,15 +210,15 @@ export default function AdminPage() {
   const handleDownloadAvatarBg = async (item: OrderItem) => {
     setDownloading(item.id + '-bg');
     const dataUrl = await generateAvatarBg(item);
-    downloadBlob(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.png`);
+    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'ФОН + АВАТАР');
     setDownloading('');
   };
 
-  const handleDownloadNickname = (item: OrderItem) => {
+  const handleDownloadNickname = async (item: OrderItem) => {
     if (!item.nickname) return;
     setDownloading(item.id + '-nick');
     const dataUrl = generateNickname(item);
-    downloadBlob(dataUrl, `print-2-nickname-${item.username}-${item.size}.png`);
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'НИКНЕЙМ');
     setDownloading('');
   };
 
