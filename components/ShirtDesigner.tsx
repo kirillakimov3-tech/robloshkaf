@@ -508,7 +508,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                   const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                   if (bgDef?.image && mockupImage) {
                     const rainbowRatio = 1817 / 961;
-                    const bgW = PRINT_AREA.width * 0.695;
+                    const bgW = PRINT_AREA.width * 0.693;
                     const bgH = bgW / rainbowRatio;
                     const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
                     const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
