@@ -315,53 +315,8 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     window.setTimeout(() => setFlyPreview(null), 700);
   };
 
-  const addToCart = async () => {
-    const previewDataUrl = stageRef.current?.toDataURL({ pixelRatio: 2 });
-
-    // Generate print files
-    const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
-    const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
-    const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
-    const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
-
-    // Avatar + BG canvas
-    const mainCanvas = document.createElement('canvas');
-    mainCanvas.width = PRINT_PX; mainCanvas.height = PRINT_PY;
-    const mc = mainCanvas.getContext('2d')!;
-    mc.clearRect(0, 0, PRINT_PX, PRINT_PY);
-    if (bgDef?.image) {
-      const rainbowRatio = 1817 / 961;
-      const bgW = PRINT_AREA.width * 0.693;
-      const bgH = bgW / rainbowRatio;
-      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
-      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
-      await new Promise<void>(resolve => {
-        const img = new window.Image(); img.crossOrigin = 'anonymous';
-        img.onload = () => { mc.drawImage(img, (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE, (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE, bgW * PRINT_DPI_SCALE, bgH * PRINT_DPI_SCALE); resolve(); };
-        img.onerror = () => resolve(); img.src = bgDef.image!;
-      });
-    }
-    if (avatarImage) mc.drawImage(avatarImage, (x - PRINT_AREA.x) * PRINT_DPI_SCALE, (y - PRINT_AREA.y) * PRINT_DPI_SCALE, avatarWidth * PRINT_DPI_SCALE, avatarHeight * PRINT_DPI_SCALE);
-    const printAvatarBgUrl = mainCanvas.toDataURL('image/png');
-
-    // Nickname canvas
-    let printNicknameUrl = '';
-    if (showNickname && label.trim()) {
-      const nickCanvas = document.createElement('canvas');
-      nickCanvas.width = PRINT_PX; nickCanvas.height = PRINT_PY;
-      const nc = nickCanvas.getContext('2d')!;
-      nc.clearRect(0, 0, PRINT_PX, PRINT_PY);
-      nc.save();
-      nc.font = `bold ${nicknameSize * PRINT_DPI_SCALE}px ${nicknameFont}`;
-      nc.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
-      nc.textAlign = 'center'; nc.textBaseline = 'middle';
-      nc.translate((nameX - PRINT_AREA.x) * PRINT_DPI_SCALE, (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE);
-      nc.rotate((nicknameRotation * Math.PI) / 180);
-      nc.fillText(label, 0, 0);
-      nc.restore();
-      printNicknameUrl = nickCanvas.toDataURL('image/png');
-    }
-
+  const addToCart = () => {
+    const previewDataUrl = stageRef.current?.toDataURL({ pixelRatio: 1 });
     const item = {
       id: crypto.randomUUID(),
       username: username || 'Roblox User',
@@ -371,8 +326,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       avatarUrl: currentAvatarUrl, avatarType,
       background: selectedBg,
       previewDataUrl,
-      printAvatarBgUrl,
-      printNicknameUrl,
       createdAt: new Date().toISOString(),
     };
     const raw = localStorage.getItem('roblox-shirt-cart');
