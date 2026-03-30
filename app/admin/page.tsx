@@ -65,19 +65,87 @@ const BACKGROUNDS: Record<string, string | null> = {
   rainbow: 'https://robloshkaf.vercel.app/backgrounds/splash-transparent.png',
 };
 
-const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
+const PRINT_SPECS: Record<string, { printW: number; printH: number; fromCollar: number }> = {
+  S:  { printW: 28, printH: 28, fromCollar: 6 },
+  M:  { printW: 30, printH: 30, fromCollar: 7 },
+  L:  { printW: 32, printH: 32, fromCollar: 7 },
+  XL: { printW: 34, printH: 34, fromCollar: 8 },
+};
+
+const downloadPdf = async (dataUrl: string, filename: string, label: string, item: OrderItem) => {
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   document.head.appendChild(script);
   await new Promise<void>(resolve => { script.onload = () => resolve(); });
   const { jsPDF } = (window as any).jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const spec = PRINT_SPECS[item.size] || PRINT_SPECS['M'];
+  const pa = item.printArea;
+  const ap = item.avatarPos;
+
+  // Avatar size and position in cm (relative to print area)
+  let avatarWcm = 0, avatarHcm = 0, avatarXcm = 0, avatarYcm = 0;
+  if (pa && ap) {
+    const scaleX = spec.printW / pa.width;
+    const scaleY = spec.printH / pa.height;
+    avatarWcm = parseFloat((ap.width * scaleX).toFixed(1));
+    avatarHcm = parseFloat((ap.height * scaleY).toFixed(1));
+    avatarXcm = parseFloat(((ap.x - pa.x) * scaleX).toFixed(1));
+    avatarYcm = parseFloat(((ap.y - pa.y) * scaleY).toFixed(1));
+  }
+
+  // Header
   doc.setFillColor(24, 24, 27); doc.rect(0, 0, 210, 20, 'F');
   doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
   doc.text(`ROBLOSHKAF — ${label}`, 10, 13);
-  doc.addImage(dataUrl, 'PNG', 30, 25, 150, 150);
-  doc.setFontSize(7); doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'normal');
-  doc.text('Transparent background — for DTF print', 30, 180);
+
+  // Print image
+  doc.addImage(dataUrl, 'PNG', 55, 25, 100, 100);
+  doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3); doc.rect(55, 25, 100, 100);
+
+  // Specs table
+  const tableX = 10;
+  let tableY = 135;
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(24, 24, 27);
+  doc.text('PRINT SPECIFICATIONS', tableX, tableY);
+  tableY += 6;
+
+  const rows = [
+    ['T-shirt size', item.size],
+    ['Print width', `${spec.printW} cm`],
+    ['Print height', `${spec.printH} cm`],
+    ['Distance from collar', `${spec.fromCollar} cm`],
+    ['Center of print', `${Math.round(spec.printW / 2)} cm from left edge`],
+    ...(avatarWcm > 0 ? [
+      ['Avatar width', `${avatarWcm} cm`],
+      ['Avatar height', `${avatarHcm} cm`],
+      ['Avatar X (from print left)', `${avatarXcm} cm`],
+      ['Avatar Y (from print top)', `${avatarYcm} cm`],
+    ] : []),
+    ['Username', item.username],
+    ['Shirt color', item.shirtColor === 'white' ? 'White' : 'Black'],
+  ];
+
+  rows.forEach(([key, val], i) => {
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(tableX, tableY - 4, 190, 7, 'F');
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+    doc.text(key + ':', tableX + 2, tableY);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(24, 24, 27);
+    doc.text(String(val), tableX + 80, tableY);
+    tableY += 7;
+  });
+
+  doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+  doc.text('Transparent background — for DTF print', tableX, tableY + 5);
+
+  doc.setFillColor(24, 24, 27); doc.rect(0, 287, 210, 10, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFontSize(7);
+  doc.text(`robloshkaf.vercel.app | ${item.username} | Size ${item.size} | ${new Date().toLocaleDateString()}`, 10, 293);
+
   doc.save(filename);
 };
 
@@ -244,7 +312,7 @@ export default function AdminPage() {
   const handleDownloadAvatarBg = async (item: OrderItem) => {
     setDownloading(item.id + '-bg');
     const dataUrl = await generateAvatarBg(item);
-    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
+    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND', item);
     setDownloading('');
   };
 
@@ -252,7 +320,7 @@ export default function AdminPage() {
     if (!item.nickname) return;
     setDownloading(item.id + '-nick');
     const dataUrl = generateNickname(item);
-    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME', item);
     setDownloading('');
   };
 
