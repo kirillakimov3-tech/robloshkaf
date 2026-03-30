@@ -163,16 +163,18 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   const ap = item.avatarPos;
   const printW = pa ? pa.width : PRINT_W;
   const printH = pa ? pa.height : PRINT_H;
-  const dpiScale = 3543 / printW;
+  // Use lower DPI for PDF to keep file size small (~2-3MB)
+  const dpiScale = 1200 / printW;
 
   // Expand canvas upward if avatar goes above print area
-  let topExpand = 0;
-  if (pa && ap && ap.y < pa.y) {
-    topExpand = pa.y - ap.y;
-  }
+  const topExpand = (pa && ap && ap.y < pa.y) ? (pa.y - ap.y) : 0;
+  // Expand canvas downward if avatar goes below print area
+  const bottomExpand = (pa && ap && (ap.y + ap.height) > (pa.y + pa.height))
+    ? (ap.y + ap.height) - (pa.y + pa.height) : 0;
 
+  const totalH = printH + topExpand + bottomExpand;
   const canvasW = Math.round(printW * dpiScale);
-  const canvasH = Math.round((printH + topExpand) * dpiScale);
+  const canvasH = Math.round(totalH * dpiScale);
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasW; canvas.height = canvasH;
@@ -186,7 +188,8 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       const bgW = printW * 0.693;
       const bgH = bgW / SPLASH_RATIO;
       const bgX = (printW - bgW) / 2;
-      const bgY = printH * 0.18 + topExpand;
+      // Position bg relative to where printArea starts in the expanded canvas
+      const bgY = topExpand + printH * 0.18;
       ctx.drawImage(bgImg, bgX * dpiScale, bgY * dpiScale, bgW * dpiScale, bgH * dpiScale);
     } catch {}
   }
@@ -195,6 +198,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
       if (pa && ap) {
+        // Avatar position relative to expanded canvas top
         const ax = (ap.x - pa.x) * dpiScale;
         const ay = (ap.y - pa.y + topExpand) * dpiScale;
         const aw = ap.width * dpiScale;
@@ -204,7 +208,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
         const avatarW = (item.avatarType === 'head' ? 276 : 258) * 0.92;
         const avatarH = (item.avatarType === 'head' ? 276 : 331) * 0.92;
         const ax = (printW - avatarW) / 2;
-        const ay = (printH - avatarH) / 2 - 35 + topExpand;
+        const ay = topExpand + (printH - avatarH) / 2 - 35;
         ctx.drawImage(avatarImg, ax * dpiScale, ay * dpiScale, avatarW * dpiScale, avatarH * dpiScale);
       }
     } catch {}
