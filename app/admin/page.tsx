@@ -165,15 +165,21 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   const printW = pa ? pa.width : PRINT_W;
   const printH = pa ? pa.height : PRINT_H;
   const dpiScale = 1200 / printW;
+
+  // Calculate offset — if avatar goes above print area, shift everything down
+  const rawAvatarY = (pa && ap) ? (ap.y - pa.y) : 0;
+  const topOffset = rawAvatarY < 0 ? -rawAvatarY : 0;
+  const totalH = printH + topOffset;
+
   const canvasW = Math.round(printW * dpiScale);
-  const canvasH = Math.round(printH * dpiScale);
+  const canvasH = Math.round(totalH * dpiScale);
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasW; canvas.height = canvasH;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, canvasW, canvasH);
 
-  // Draw background
+  // Draw background — shifted down by topOffset to stay in sync with avatar
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
@@ -181,18 +187,18 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       const bgW = printW * 0.693;
       const bgH = bgW / SPLASH_RATIO;
       const bgX = (printW - bgW) / 2;
-      const bgY = printH * 0.18;
+      const bgY = topOffset + printH * 0.18;
       ctx.drawImage(bgImg, bgX * dpiScale, bgY * dpiScale, bgW * dpiScale, bgH * dpiScale);
     } catch {}
   }
 
-  // Draw avatar — clip to canvas bounds
+  // Draw avatar — also shifted down by topOffset
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
       if (pa && ap) {
         const ax = (ap.x - pa.x) * dpiScale;
-        const ay = (ap.y - pa.y) * dpiScale;
+        const ay = (rawAvatarY + topOffset) * dpiScale;
         const aw = ap.width * dpiScale;
         const ah = ap.height * dpiScale;
         ctx.drawImage(avatarImg, ax, ay, aw, ah);
@@ -200,7 +206,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
         const avatarW = (item.avatarType === 'head' ? 276 : 258) * 0.92;
         const avatarH = (item.avatarType === 'head' ? 276 : 331) * 0.92;
         const ax = (printW - avatarW) / 2;
-        const ay = (printH - avatarH) / 2 - 35;
+        const ay = topOffset + (printH - avatarH) / 2 - 35;
         ctx.drawImage(avatarImg, ax * dpiScale, ay * dpiScale, avatarW * dpiScale, avatarH * dpiScale);
       }
     } catch {}
