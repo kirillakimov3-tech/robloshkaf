@@ -72,23 +72,19 @@ const PRINT_SPECS: Record<string, { printW: number; printH: number; fromCollar: 
   XL: { printW: 34, printH: 34, fromCollar: 8 },
 };
 
-const loadJsPdf = async () => {
-  if ((window as any).jspdf) return (window as any).jspdf.jsPDF;
+const downloadPdf = async (dataUrl: string, filename: string, label: string, item: OrderItem) => {
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   document.head.appendChild(script);
   await new Promise<void>(resolve => { script.onload = () => resolve(); });
-  return (window as any).jspdf.jsPDF;
-};
-
-// PDF 1: Reference — shirt mockup preview + specs table
-const downloadReferencePdf = async (previewDataUrl: string, printDataUrl: string, item: OrderItem) => {
-  const jsPDF = await loadJsPdf();
+  const { jsPDF } = (window as any).jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
   const spec = PRINT_SPECS[item.size] || PRINT_SPECS['M'];
   const pa = item.printArea;
   const ap = item.avatarPos;
 
+  // Avatar size and position in cm (relative to print area)
   let avatarWcm = 0, avatarHcm = 0, avatarXcm = 0, avatarYcm = 0;
   if (pa && ap) {
     const scaleX = spec.printW / pa.width;
@@ -102,31 +98,21 @@ const downloadReferencePdf = async (previewDataUrl: string, printDataUrl: string
   // Header
   doc.setFillColor(24, 24, 27); doc.rect(0, 0, 210, 20, 'F');
   doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('ROBLOSHKAF — REFERENCE', 10, 13);
+  doc.text(`ROBLOSHKAF — ${label}`, 10, 13);
 
-  // Shirt preview (with mockup)
-  if (previewDataUrl) {
-    doc.addImage(previewDataUrl, 'PNG', 10, 25, 90, 90);
-    doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-    doc.text('Preview (not for print)', 10, 118);
-  }
-
-  // Print preview (transparent)
-  doc.addImage(printDataUrl, 'PNG', 115, 25, 85, 85);
-  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.rect(115, 25, 85, 85);
-  doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-  doc.text('Print file (transparent)', 115, 113);
+  // Print image
+  doc.addImage(dataUrl, 'PNG', 55, 25, 100, 100);
+  doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3); doc.rect(55, 25, 100, 100);
 
   // Specs table
   const tableX = 10;
-  let tableY = 128;
+  let tableY = 135;
   doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(24, 24, 27);
   doc.text('PRINT SPECIFICATIONS', tableX, tableY);
   tableY += 6;
 
   const rows = [
     ['T-shirt size', item.size],
-    ['Shirt color', item.shirtColor === 'white' ? 'White' : 'Black'],
     ['Print width', `${spec.printW} cm`],
     ['Print height', `${spec.printH} cm`],
     ['Distance from collar', `${spec.fromCollar} cm`],
@@ -135,13 +121,18 @@ const downloadReferencePdf = async (previewDataUrl: string, printDataUrl: string
       ['Avatar width', `${avatarWcm} cm`],
       ['Avatar height', `${avatarHcm} cm`],
       ['Avatar X (from print left)', `${avatarXcm} cm`],
+      ['Avatar Y (from print top)', `${avatarYcm} cm`],
       ['Avatar Y (from collar)', `${parseFloat((spec.fromCollar + avatarYcm).toFixed(1))} cm`],
     ] : []),
     ['Username', item.username],
+    ['Shirt color', item.shirtColor === 'white' ? 'White' : 'Black'],
   ];
 
   rows.forEach(([key, val], i) => {
-    if (i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(tableX, tableY - 4, 190, 7, 'F'); }
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(tableX, tableY - 4, 190, 7, 'F');
+    }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
     doc.text(key + ':', tableX + 2, tableY);
     doc.setFont('helvetica', 'normal'); doc.setTextColor(24, 24, 27);
@@ -149,32 +140,14 @@ const downloadReferencePdf = async (previewDataUrl: string, printDataUrl: string
     tableY += 7;
   });
 
-  doc.setFillColor(24, 24, 27); doc.rect(0, 287, 210, 10, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFontSize(7);
-  doc.text(`robloshkaf.vercel.app | ${item.username} | Size ${item.size} | ${new Date().toLocaleDateString()}`, 10, 293);
-  doc.save(`reference-${item.username}-${item.size}.pdf`);
-};
-
-// PDF 2: Print mockup — clean print only, no table
-const downloadPrintPdf = async (dataUrl: string, item: OrderItem) => {
-  const jsPDF = await loadJsPdf();
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-  // Header
-  doc.setFillColor(24, 24, 27); doc.rect(0, 0, 210, 20, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('ROBLOSHKAF — PRINT FILE', 10, 13);
-
-  // Large print image centered
-  doc.addImage(dataUrl, 'PNG', 30, 25, 150, 150);
-
   doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-  doc.text(`${item.username} | Size ${item.size} | Transparent background — for DTF print`, 30, 180);
+  doc.text('Transparent background — for DTF print', tableX, tableY + 5);
 
   doc.setFillColor(24, 24, 27); doc.rect(0, 287, 210, 10, 'F');
   doc.setTextColor(255, 255, 255); doc.setFontSize(7);
   doc.text(`robloshkaf.vercel.app | ${item.username} | Size ${item.size} | ${new Date().toLocaleDateString()}`, 10, 293);
-  doc.save(`print-${item.username}-${item.size}.pdf`);
+
+  doc.save(filename);
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
@@ -191,24 +164,16 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   const ap = item.avatarPos;
   const printW = pa ? pa.width : PRINT_W;
   const printH = pa ? pa.height : PRINT_H;
-  // Use lower DPI for PDF to keep file size small (~2-3MB)
   const dpiScale = 1200 / printW;
-
-  // Expand canvas upward if avatar goes above print area
-  const topExpand = (pa && ap && ap.y < pa.y) ? (pa.y - ap.y) : 0;
-  // Expand canvas downward if avatar goes below print area
-  const bottomExpand = (pa && ap && (ap.y + ap.height) > (pa.y + pa.height))
-    ? (ap.y + ap.height) - (pa.y + pa.height) : 0;
-
-  const totalH = printH + topExpand + bottomExpand;
   const canvasW = Math.round(printW * dpiScale);
-  const canvasH = Math.round(totalH * dpiScale);
+  const canvasH = Math.round(printH * dpiScale);
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasW; canvas.height = canvasH;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, canvasW, canvasH);
 
+  // Draw background
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
@@ -216,19 +181,18 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       const bgW = printW * 0.693;
       const bgH = bgW / SPLASH_RATIO;
       const bgX = (printW - bgW) / 2;
-      // Position bg relative to where printArea starts in the expanded canvas
-      const bgY = topExpand + printH * 0.18;
+      const bgY = printH * 0.18;
       ctx.drawImage(bgImg, bgX * dpiScale, bgY * dpiScale, bgW * dpiScale, bgH * dpiScale);
     } catch {}
   }
 
+  // Draw avatar — clip to canvas bounds
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
       if (pa && ap) {
-        // Avatar position relative to expanded canvas top
         const ax = (ap.x - pa.x) * dpiScale;
-        const ay = (ap.y - pa.y + topExpand) * dpiScale;
+        const ay = (ap.y - pa.y) * dpiScale;
         const aw = ap.width * dpiScale;
         const ah = ap.height * dpiScale;
         ctx.drawImage(avatarImg, ax, ay, aw, ah);
@@ -236,7 +200,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
         const avatarW = (item.avatarType === 'head' ? 276 : 258) * 0.92;
         const avatarH = (item.avatarType === 'head' ? 276 : 331) * 0.92;
         const ax = (printW - avatarW) / 2;
-        const ay = topExpand + (printH - avatarH) / 2 - 35;
+        const ay = (printH - avatarH) / 2 - 35;
         ctx.drawImage(avatarImg, ax * dpiScale, ay * dpiScale, avatarW * dpiScale, avatarH * dpiScale);
       }
     } catch {}
@@ -244,7 +208,6 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
 
   return canvas.toDataURL('image/png');
 };
-
 const generateNickname = (item: OrderItem): string => {
   const pa = item.printArea;
   const printW = pa ? pa.width : PRINT_W;
@@ -348,18 +311,10 @@ export default function AdminPage() {
     setShopOpen(next);
   };
 
-  const handleDownloadReference = async (item: OrderItem) => {
-    setDownloading(item.id + '-ref');
-    const printDataUrl = await generateAvatarBg(item);
-    const previewDataUrl = item.previewDataUrl || '';
-    await downloadReferencePdf(previewDataUrl, printDataUrl, item);
-    setDownloading('');
-  };
-
-  const handleDownloadPrint = async (item: OrderItem) => {
-    setDownloading(item.id + '-print');
+  const handleDownloadAvatarBg = async (item: OrderItem) => {
+    setDownloading(item.id + '-bg');
     const dataUrl = await generateAvatarBg(item);
-    await downloadPrintPdf(dataUrl, item);
+    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND', item);
     setDownloading('');
   };
 
@@ -367,7 +322,7 @@ export default function AdminPage() {
     if (!item.nickname) return;
     setDownloading(item.id + '-nick');
     const dataUrl = generateNickname(item);
-    await downloadPrintPdf(dataUrl, item);
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME', item);
     setDownloading('');
   };
 
@@ -478,13 +433,9 @@ export default function AdminPage() {
                           <div className="text-sm text-zinc-400 font-semibold">{item.shirtColor === 'white' ? 'Белая' : 'Чёрная'} · {item.size}</div>
                           {item.nickname && <div className="text-sm text-zinc-400 font-semibold">Никнейм: {item.nickname}</div>}
                           <div className="flex gap-2 mt-3 flex-wrap">
-                            <button onClick={() => handleDownloadReference(item)} disabled={downloading === item.id + '-ref'}
-                              className="inline-flex items-center gap-1 rounded-xl border-2 border-blue-400 bg-blue-500 text-white px-3 py-1.5 text-xs font-black hover:bg-blue-400 transition disabled:opacity-50">
-                              {downloading === item.id + '-ref' ? '⏳ Генерация...' : '📋 Референс'}
-                            </button>
-                            <button onClick={() => handleDownloadPrint(item)} disabled={downloading === item.id + '-print'}
+                            <button onClick={() => handleDownloadAvatarBg(item)} disabled={downloading === item.id + '-bg'}
                               className="inline-flex items-center gap-1 rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition disabled:opacity-50">
-                              {downloading === item.id + '-print' ? '⏳ Генерация...' : '🖨️ Макет'}
+                              {downloading === item.id + '-bg' ? '⏳ Генерация...' : '📥 Фон + Аватар'}
                             </button>
                             {item.nickname && (
                               <button onClick={() => handleDownloadNickname(item)} disabled={downloading === item.id + '-nick'}
