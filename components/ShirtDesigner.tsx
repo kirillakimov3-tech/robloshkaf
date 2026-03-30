@@ -40,7 +40,7 @@ type FontId = typeof FONTS[number]['id'];
 
 const BACKGROUNDS = [
   { id: 'none',    label: 'Нет',      colors: null,       image: null },
-  { id: 'rainbow', label: 'Радуга',   colors: null,       image: '/backgrounds/rainbow-transparent.png' },
+ { id: 'rainbow', label: 'Взрыв', colors: null, image: '/backgrounds/splash-transparent.png' },
   { id: 'sunset',  label: 'Закат',    colors: ['#FF6B35', '#F7C59F', '#FFDA77'], image: null },
   { id: 'sky',     label: 'Небо',     colors: ['#4FC3F7', '#81D4FA', '#E1F5FE'], image: null },
   { id: 'night',   label: 'Ночь',     colors: ['#0D1B2A', '#1B263B', '#415A77'], image: null },
