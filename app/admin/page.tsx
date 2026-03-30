@@ -64,8 +64,6 @@ const SPLASH_RATIO = 965 / 948;
 const BACKGROUNDS: Record<string, string | null> = {
   rainbow: 'https://robloshkaf.vercel.app/backgrounds/splash-transparent.png',
 };
-  rainbow: 'https://robloshkaf.vercel.app/backgrounds/rainbow-transparent.png',
-};
 
 const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
   const script = document.createElement('script');
