@@ -59,7 +59,7 @@ const PRINT_H = 520;
 const DPI_SCALE = 1000 / PRINT_W; // Lower res for PDF — smaller file size
 const PX = Math.round(PRINT_W * DPI_SCALE);
 const PY = Math.round(PRINT_H * DPI_SCALE);
-const RAINBOW_RATIO = 1817 / 961;
+const RAINBOW_RATIO = 965 / 948;
 
 const BACKGROUNDS: Record<string, string | null> = {
   rainbow: 'https://robloshkaf.vercel.app/backgrounds/splash-transparent.png',

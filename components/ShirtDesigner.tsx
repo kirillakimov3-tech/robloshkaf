@@ -235,7 +235,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
 
     if (bgDef?.image) {
-      const rainbowRatio = 1817 / 961;
+      const rainbowRatio = 965 / 948;
       const bgW = PRINT_AREA.width * 0.693;
       const bgH = bgW / rainbowRatio;
       const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
