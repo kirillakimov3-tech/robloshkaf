@@ -122,6 +122,7 @@ const downloadPdf = async (dataUrl: string, filename: string, label: string, ite
       ['Avatar height', `${avatarHcm} cm`],
       ['Avatar X (from print left)', `${avatarXcm} cm`],
       ['Avatar Y (from print top)', `${avatarYcm} cm`],
+      ['Avatar Y (from collar)', `${parseFloat((spec.fromCollar + avatarYcm).toFixed(1))} cm`],
     ] : []),
     ['Username', item.username],
     ['Shirt color', item.shirtColor === 'white' ? 'White' : 'Black'],
