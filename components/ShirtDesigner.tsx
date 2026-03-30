@@ -327,6 +327,16 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       background: selectedBg,
       previewDataUrl,
       createdAt: new Date().toISOString(),
+      // Точные координаты для экспорта
+      printArea: {
+        x: PRINT_AREA.x, y: PRINT_AREA.y,
+        width: PRINT_AREA.width, height: PRINT_AREA.height,
+      },
+      avatarPos: {
+        x: x, y: y,
+        width: avatarWidth, height: avatarHeight,
+      },
+      nicknamePos: { x: nameX, y: nameY },
     };
     const raw = localStorage.getItem('roblox-shirt-cart');
     const current = raw ? JSON.parse(raw) : [];
