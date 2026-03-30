@@ -317,6 +317,14 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
 
   const addToCart = () => {
     const previewDataUrl = stageRef.current?.toDataURL({ pixelRatio: 1 });
+
+    // Background position (same as used in canvas rendering)
+    const rainbowRatio = 965 / 948;
+    const bgW = PRINT_AREA.width * 0.689;
+    const bgH = bgW / rainbowRatio;
+    const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
+    const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
+
     const item = {
       id: crypto.randomUUID(),
       username: username || 'Roblox User',
@@ -327,16 +335,13 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       background: selectedBg,
       previewDataUrl,
       createdAt: new Date().toISOString(),
-      // Точные координаты для экспорта
       printArea: {
         x: PRINT_AREA.x, y: PRINT_AREA.y,
         width: PRINT_AREA.width, height: PRINT_AREA.height,
       },
-      avatarPos: {
-        x: x, y: y,
-        width: avatarWidth, height: avatarHeight,
-      },
+      avatarPos: { x, y, width: avatarWidth, height: avatarHeight },
       nicknamePos: { x: nameX, y: nameY },
+      bgPos: { x: bgX, y: bgY, width: bgW, height: bgH },
     };
     const raw = localStorage.getItem('roblox-shirt-cart');
     const current = raw ? JSON.parse(raw) : [];
