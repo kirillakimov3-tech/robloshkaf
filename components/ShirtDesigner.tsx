@@ -427,8 +427,8 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
       <ImageBackgroundLayer
   src={bgDef.image}
-  x={PRINT_AREA.x + PRINT_AREA.width * 0.05}
-  y={PRINT_AREA.y + PRINT_AREA.height * 0.15}
+  x={PRINT_AREA.x + PRINT_AREA.width * 0.06}
+  y={PRINT_AREA.y + PRINT_AREA.height * 0.14}
   width={PRINT_AREA.width * 0.9}
   height={PRINT_AREA.height * 0.9}
   globalCompositeOperation="source-atop"
