@@ -215,49 +215,38 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     });
  
   const exportAvatarBg = async () => {
-    const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
-    const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
-    const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
-    const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
- 
-    const canvas = document.createElement('canvas');
-    canvas.width = PRINT_PX;
-    canvas.height = PRINT_PY;
-    const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
- 
-    if (bgDef?.image) {
-      const rainbowRatio = 1817 / 961;
-      const bgW = PRINT_AREA.width * 0.693;
-      const bgH = bgW / rainbowRatio;
-      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
-      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
-      await new Promise<void>(resolve => {
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          ctx.drawImage(img,
-            (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
-            (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
-            bgW * PRINT_DPI_SCALE,
-            bgH * PRINT_DPI_SCALE);
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = bgDef.image!;
+  // ... весь существующий код генерации canvas ...
+  const dataUrl = canvas.toDataURL('image/png');
+
+  // Если включён апскейл
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    try {
+      const btn = document.querySelector('[data-export-btn]') as HTMLButtonElement;
+      if (btn) btn.textContent = '⏳ Улучшаем качество...';
+      
+      const res = await fetch('/api/upscale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: dataUrl }),
       });
+      const data = await res.json();
+      
+      if (data.url) {
+        // Скачиваем улучшенное изображение
+        const imgRes = await fetch(data.url);
+        const blob = await imgRes.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        await downloadBlob(blobUrl, `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+    } catch (e) {
+      console.error('Upscale failed, downloading original', e);
     }
- 
-    if (avatarImage) {
-      ctx.drawImage(avatarImage,
-        (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
-        (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
-        avatarWidth * PRINT_DPI_SCALE,
-        avatarHeight * PRINT_DPI_SCALE);
-    }
- 
-    await downloadBlob(canvas.toDataURL('image/png'), `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
-  };
+  }
+
+  await downloadBlob(dataUrl, `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
+};
  
   const exportNickname = async () => {
     if (!showNickname || !label.trim()) return;
