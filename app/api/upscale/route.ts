@@ -3,8 +3,22 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   const { imageBase64 } = await req.json();
 
-  // Загружаем изображение на временный хостинг через KIE
-  const uploadRes = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
+  // Загружаем base64 на временный хостинг через KIE upload
+  const uploadRes = await fetch('https://api.kie.ai/api/v1/resource/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.KIE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ file: imageBase64 }),
+  });
+
+  const uploadData = await uploadRes.json();
+  const imageUrl = uploadData?.data?.url;
+  if (!imageUrl) return NextResponse.json({ error: 'Failed to upload image', detail: uploadData }, { status: 500 });
+
+  // Создаём задачу апскейла
+  const taskRes = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.KIE_API_KEY}`,
@@ -12,15 +26,15 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: 'recraft/crisp-upscale',
-      input: { image: imageBase64 },
+      input: { image: imageUrl },
     }),
   });
 
-  const uploadData = await uploadRes.json();
-  const taskId = uploadData?.data?.taskId;
-  if (!taskId) return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
+  const taskData = await taskRes.json();
+  const taskId = taskData?.data?.taskId;
+  if (!taskId) return NextResponse.json({ error: 'Failed to create task', detail: taskData }, { status: 500 });
 
-  // Polling — ждём результат (до 60 секунд)
+  // Polling
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const statusRes = await fetch(`https://api.kie.ai/api/v1/jobs/taskDetail?taskId=${taskId}`, {
