@@ -142,7 +142,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
   const [showNickname, setShowNickname] = useState(true);
   const [nicknameSize, setNicknameSize] = useState(30);
   const [nicknameRotation, setNicknameRotation] = useState(0);
-  const [nicknameFont, setNicknameFont] = useState<FontId>('Arial');
+  const [nicknameFont, setNicknameFont] = useState<FontId>('Helvetica');
   const [showSizeTable, setShowSizeTable] = useState(false);
  
   const STAGE_WIDTH = 1080;
