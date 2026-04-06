@@ -42,8 +42,9 @@ export async function POST(req: NextRequest) {
     const statusRes = await fetch(`https://api.kie.ai/api/v1/jobs/taskDetail?taskId=${taskId}`, {
       headers: { 'Authorization': `Bearer ${process.env.KIE_API_KEY}` },
     });
-    const statusData = await statusRes.json();
+  const statusData = await statusRes.json();
     const status = statusData?.data?.status;
+    console.log(`Poll ${i}:`, JSON.stringify(statusData?.data));
     if (status === 'succeed') {
       const url = statusData?.data?.output?.imageUrl || statusData?.data?.output?.[0]?.url;
       return NextResponse.json({ url });
