@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     const tokenData = await exchangeCodeForToken(code);
 
-    const response = NextResponse.redirect(new URL('/designer', req.url));
+    const response = NextResponse.redirect(new URL('/', req.url));
 
     response.cookies.set('roblox_access_token', tokenData.access_token, {
       httpOnly: true,
