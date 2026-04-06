@@ -542,18 +542,17 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     );
                   }
                   if (bgDef?.colors && mockupImage) {
-                    return (
-                      <>
-                        <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                        <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                        <KonvaImage
-                          image={mockupImage} x={mockupX} y={mockupY}
-                          width={mockupSize.width} height={mockupSize.height}
-                          globalCompositeOperation="destination-in"
-                        />
-                      </>
-                    );
-                  }
+  return (
+    <>
+      <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+      <KonvaImage
+        image={mockupImage} x={mockupX} y={mockupY}
+        width={mockupSize.width} height={mockupSize.height}
+        globalCompositeOperation="destination-in"
+      />
+    </>
+  );
+}
                   return null;
                 })()}
               </Layer>
