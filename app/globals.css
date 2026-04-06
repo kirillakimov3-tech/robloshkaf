@@ -19,3 +19,23 @@ html, body {
     opacity: 0.2;
   }
 }
+@font-face {
+  font-family: 'SpriteGraffiti';
+  src: url('/fonts/SpriteGraffiti-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Bristol';
+  src: url('/fonts/Bristol.otf') format('opentype');
+}
+@font-face {
+  font-family: 'MostWazted';
+  src: url('/fonts/mostwaztedrusbylyajka.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Flatiron';
+  src: url('/fonts/Flatiron Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'ArcoCyrillic';
+  src: url('/fonts/arcocyrillic.otf') format('opentype');
+}

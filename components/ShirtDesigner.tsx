@@ -28,12 +28,12 @@ const SIZE_TABLE = [
 ] as const;
  
 const FONTS = [
-  { id: 'Arial',         label: 'Обычный',  preview: 'Aa' },
-  { id: 'Impact',        label: 'Мощный',   preview: 'Aa' },
-  { id: 'Georgia',       label: 'Классика', preview: 'Aa' },
-  { id: 'Courier New',   label: 'Моно',     preview: 'Aa' },
-  { id: 'Comic Sans MS', label: 'Комикс',   preview: 'Aa' },
-  { id: 'Verdana',       label: 'Чёткий',   preview: 'Aa' },
+  { id: 'Helvetica',     label: 'Обычный',   preview: 'Aa' },
+  { id: 'ArcoCyrillic',  label: 'Мощный',    preview: 'Aa' },
+  { id: 'Bristol',       label: 'Клякса',    preview: 'Aa' },
+  { id: 'MostWazted',    label: 'Граффити',  preview: 'Aa' },
+  { id: 'Flatiron',      label: 'Мультфильм',preview: 'Aa' },
+  { id: 'SpriteGraffiti',label: 'Фломастер', preview: 'Aa' },
 ] as const;
  
 type FontId = typeof FONTS[number]['id'];
