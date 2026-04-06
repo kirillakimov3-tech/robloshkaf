@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-  model: 'topaz/upscale',
-  input: { image: imageUrl, upscale_factor: 2 },
+  model: 'topaz-photo-ai/upscale',
+input: { image: imageUrl, upscale_factor: 2 },
 }),
   });
   const taskData = await taskRes.json();
