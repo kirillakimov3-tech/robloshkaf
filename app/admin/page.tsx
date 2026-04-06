@@ -56,24 +56,30 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const SIZES = ['S', 'M', 'L', 'XL'];
 const PRINT_W = 530;
 const PRINT_H = 520;
-const DPI_SCALE = 3543 / PRINT_W; // 300 DPI for print quality;
+const DPI_SCALE = 3543 / PRINT_W;
 const PX = Math.round(PRINT_W * DPI_SCALE);
 const PY = Math.round(PRINT_H * DPI_SCALE);
-const RAINBOW_RATIO = 1817 / 961;
  
 const BACKGROUNDS: Record<string, string | null> = {
   explosion: 'https://robloshkaf.vercel.app/backgrounds/explosion.png',
 };
- 
-const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
-  const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-  document.head.appendChild(script);
-  await new Promise<void>(resolve => { script.onload = () => resolve(); });
-  const { jsPDF } = (window as any).jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  doc.addImage(dataUrl, 'PNG', 30, 30, 150, 150);
-  doc.save(filename);
+
+const downloadPng = (dataUrl: string, filename: string) => {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+const downloadJpg = (dataUrl: string, filename: string) => {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 };
  
 const loadImage = (src: string): Promise<HTMLImageElement> =>
@@ -84,14 +90,13 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
     img.onerror = reject;
     img.src = src;
   });
- 
-const generateAvatarBg = async (item: OrderItem): Promise<string> => {
+
+// Генерирует только фон (без аватара)
+const generateBgOnly = async (item: OrderItem): Promise<string> => {
   const canvas = document.createElement('canvas');
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
-
-  // Добавь это — рисуем фон ПЕРЕД аватаром:
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
@@ -103,8 +108,15 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(bgImg, bgX * DPI_SCALE, bgY * DPI_SCALE, bgW * DPI_SCALE, bgH * DPI_SCALE);
     } catch {}
   }
+  return canvas.toDataURL('image/png');
+};
 
-  // Аватар поверх фона
+// Генерирует только аватар (без фона)
+const generateAvatarOnly = async (item: OrderItem): Promise<string> => {
+  const canvas = document.createElement('canvas');
+  canvas.width = PX; canvas.height = PY;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, PX, PY);
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
@@ -115,11 +127,47 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(avatarImg, ax * DPI_SCALE, ay * DPI_SCALE, avatarW * DPI_SCALE, avatarH * DPI_SCALE);
     } catch {}
   }
-
   return canvas.toDataURL('image/png');
 };
- 
-const generateNickname = (item: OrderItem): string => {
+
+// Генерирует референс — футболка + фон + аватар вместе (JPG)
+const generateReference = async (item: OrderItem): Promise<string> => {
+  const MOCK_W = 800;
+  const MOCK_H = 800;
+  const canvas = document.createElement('canvas');
+  canvas.width = MOCK_W; canvas.height = MOCK_H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#f4f4f5';
+  ctx.fillRect(0, 0, MOCK_W, MOCK_H);
+
+  // Простой референс: белый фон + фон + аватар
+  const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
+  if (bgImageSrc) {
+    try {
+      const bgImg = await loadImage(bgImageSrc);
+      ctx.drawImage(bgImg, MOCK_W * 0.1, MOCK_H * 0.2, MOCK_W * 0.8, MOCK_H * 0.7);
+    } catch {}
+  }
+  if (item.avatarUrl) {
+    try {
+      const avatarImg = await loadImage(item.avatarUrl);
+      const avatarW = MOCK_W * 0.35;
+      const avatarH = MOCK_H * 0.5;
+      ctx.drawImage(avatarImg, (MOCK_W - avatarW) / 2, MOCK_H * 0.25, avatarW, avatarH);
+    } catch {}
+  }
+  if (item.nickname) {
+    const fontSize = (item.nicknameSize || 30) * 1.5;
+    ctx.font = `bold ${fontSize}px ${item.nicknameFont || 'Arial'}`;
+    ctx.fillStyle = item.shirtColor === 'black' ? '#ffffff' : '#111111';
+    ctx.textAlign = 'center';
+    ctx.fillText(item.nickname, MOCK_W / 2, MOCK_H * 0.85);
+  }
+  return canvas.toDataURL('image/jpeg', 0.9);
+};
+
+// Генерирует никнейм как PNG (текст в кривых через canvas)
+const generateNicknamePng = (item: OrderItem): string => {
   const canvas = document.createElement('canvas');
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
@@ -151,7 +199,6 @@ export default function AdminPage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shopOpen, setShopOpen] = useState(true);
-  const [loadingInventory, setLoadingInventory] = useState(false);
  
   useEffect(() => {
     const saved = localStorage.getItem('admin_authed');
@@ -172,13 +219,11 @@ export default function AdminPage() {
   };
  
   const loadInventory = async () => {
-    setLoadingInventory(true);
     const { data: inv } = await supabase.from('inventory').select('*');
     const { data: settings } = await supabase.from('settings').select('*');
     setInventory(inv || []);
     const shopSetting = settings?.find((s: any) => s.key === 'shop_open');
     setShopOpen(shopSetting?.value === 'true');
-    setLoadingInventory(false);
   };
  
   const updateStatus = async (id: string, status: string) => {
@@ -188,7 +233,7 @@ export default function AdminPage() {
   };
  
   const deleteOrder = async (id: string) => {
-    if (!confirm('Удалить заказ? Это действие нельзя отменить.')) return;
+    if (!confirm('Удалить заказ?')) return;
     await supabase.from('orders').delete().eq('id', id);
     setOrders(prev => prev.filter(o => o.id !== id));
     if (selected?.id === id) setSelected(null);
@@ -204,12 +249,8 @@ export default function AdminPage() {
     await supabase.from('settings').update({ value: String(next) }).eq('key', 'shop_open');
     setShopOpen(next);
   };
- 
-  const handleDownloadAvatarBg = async (item: OrderItem) => {
-    setDownloading(item.id + '-bg');
-    const dataUrl = await generateAvatarBg(item);
-    const filename = `print-1-avatar-bg-${item.username}-${item.size}.pdf`;
- 
+
+  const withUpscale = async (dataUrl: string, filename: string, setDl: (s: string) => void) => {
     try {
       const res = await fetch('/api/upscale', {
         method: 'POST',
@@ -217,45 +258,58 @@ export default function AdminPage() {
         body: JSON.stringify({ imageBase64: dataUrl }),
       });
       const { taskId } = await res.json();
- 
       if (taskId) {
         for (let i = 0; i < 40; i++) {
           await new Promise(r => setTimeout(r, 3000));
           const statusRes = await fetch(`/api/upscale/status?taskId=${taskId}`);
           const { status, url } = await statusRes.json();
- 
           if (status === 'succeed' && url) {
             const imgRes = await fetch(url);
             const blob = await imgRes.blob();
             const blobUrl = URL.createObjectURL(blob);
-            const img = new window.Image();
-            await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
-            const upscaledCanvas = document.createElement('canvas');
-            upscaledCanvas.width = img.width;
-            upscaledCanvas.height = img.height;
-            upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
-            const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
+            downloadPng(blobUrl, filename);
             URL.revokeObjectURL(blobUrl);
-            await downloadPdf(upscaledDataUrl, filename, 'AVATAR + BACKGROUND');
-            setDownloading('');
             return;
           }
           if (status === 'failed') break;
         }
       }
     } catch (e) {
-      console.error('Upscale failed, using original', e);
+      console.error('Upscale failed', e);
     }
- 
-    await downloadPdf(dataUrl, filename, 'AVATAR + BACKGROUND');
+    downloadPng(dataUrl, filename);
+  };
+
+  // Кнопка 1: только фон
+  const handleDownloadBg = async (item: OrderItem) => {
+    setDownloading(item.id + '-bg');
+    const dataUrl = await generateBgOnly(item);
+    await withUpscale(dataUrl, `1-bg-${item.username}-${item.size}.png`, s => setDownloading(s));
     setDownloading('');
   };
- 
+
+  // Кнопка 2: только аватар
+  const handleDownloadAvatar = async (item: OrderItem) => {
+    setDownloading(item.id + '-avatar');
+    const dataUrl = await generateAvatarOnly(item);
+    await withUpscale(dataUrl, `2-avatar-${item.username}-${item.size}.png`, s => setDownloading(s));
+    setDownloading('');
+  };
+
+  // Кнопка 3: референс JPG
+  const handleDownloadReference = async (item: OrderItem) => {
+    setDownloading(item.id + '-ref');
+    const dataUrl = await generateReference(item);
+    downloadJpg(dataUrl, `3-reference-${item.username}-${item.size}.jpg`);
+    setDownloading('');
+  };
+
+  // Кнопка 4: никнейм PNG
   const handleDownloadNickname = async (item: OrderItem) => {
     if (!item.nickname) return;
     setDownloading(item.id + '-nick');
-    const dataUrl = generateNickname(item);
-    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
+    const dataUrl = generateNicknamePng(item);
+    downloadPng(dataUrl, `4-nickname-${item.username}-${item.size}.png`);
     setDownloading('');
   };
  
@@ -337,10 +391,7 @@ export default function AdminPage() {
                       <button key={key} onClick={() => updateStatus(selected.id, key)} className={`rounded-xl border-2 border-zinc-700 px-3 py-1.5 text-xs font-black transition ${selected.status === key ? color : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{label}</button>
                     ))}
                   </div>
-                  <button onClick={() => deleteOrder(selected.id)}
-                    className="ml-auto rounded-xl border-2 border-red-500 bg-red-500 px-3 py-1.5 text-xs font-black text-white hover:bg-red-600 transition">
-                    🗑 Удалить
-                  </button>
+                  <button onClick={() => deleteOrder(selected.id)} className="ml-auto rounded-xl border-2 border-red-500 bg-red-500 px-3 py-1.5 text-xs font-black text-white hover:bg-red-600 transition">🗑 Удалить</button>
                 </div>
  
                 <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5">
@@ -366,14 +417,22 @@ export default function AdminPage() {
                           <div className="text-sm text-zinc-400 font-semibold">{item.shirtColor === 'white' ? 'Белая' : 'Чёрная'} · {item.size}</div>
                           {item.nickname && <div className="text-sm text-zinc-400 font-semibold">Никнейм: {item.nickname}</div>}
                           <div className="flex gap-2 mt-3 flex-wrap">
-                            <button onClick={() => handleDownloadAvatarBg(item)} disabled={downloading === item.id + '-bg'}
-                              className="inline-flex items-center gap-1 rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition disabled:opacity-50">
-                              {downloading === item.id + '-bg' ? '⏳ Апскейл...' : '📥 Фон + Аватар'}
+                            <button onClick={() => handleDownloadBg(item)} disabled={!!downloading}
+                              className="inline-flex items-center gap-1 rounded-xl border-2 border-orange-400 bg-orange-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-orange-300 transition disabled:opacity-50">
+                              {downloading === item.id + '-bg' ? '⏳...' : '🖼 Фон'}
+                            </button>
+                            <button onClick={() => handleDownloadAvatar(item)} disabled={!!downloading}
+                              className="inline-flex items-center gap-1 rounded-xl border-2 border-blue-400 bg-blue-400 text-white px-3 py-1.5 text-xs font-black hover:bg-blue-300 transition disabled:opacity-50">
+                              {downloading === item.id + '-avatar' ? '⏳...' : '🧍 Аватар'}
+                            </button>
+                            <button onClick={() => handleDownloadReference(item)} disabled={!!downloading}
+                              className="inline-flex items-center gap-1 rounded-xl border-2 border-green-400 bg-green-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-green-300 transition disabled:opacity-50">
+                              {downloading === item.id + '-ref' ? '⏳...' : '👕 Референс'}
                             </button>
                             {item.nickname && (
-                              <button onClick={() => handleDownloadNickname(item)} disabled={downloading === item.id + '-nick'}
+                              <button onClick={() => handleDownloadNickname(item)} disabled={!!downloading}
                                 className="inline-flex items-center gap-1 rounded-xl border-2 border-zinc-500 bg-zinc-700 text-white px-3 py-1.5 text-xs font-black hover:bg-zinc-600 transition disabled:opacity-50">
-                                {downloading === item.id + '-nick' ? '⏳ Генерация...' : '📥 Никнейм'}
+                                {downloading === item.id + '-nick' ? '⏳...' : '✏️ Никнейм'}
                               </button>
                             )}
                           </div>
@@ -393,9 +452,9 @@ export default function AdminPage() {
           <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-6 flex items-center justify-between">
             <div>
               <div className="font-black text-lg">Магазин</div>
-              <div className="text-sm text-zinc-500 font-semibold">{shopOpen ? '✅ Открыт — покупатели могут делать заказы' : '🔴 Закрыт — заказы отключены'}</div>
+              <div className="text-sm text-zinc-500 font-semibold">{shopOpen ? '✅ Открыт' : '🔴 Закрыт'}</div>
             </div>
-            <button onClick={toggleShop} className={`rounded-xl border-2 border-zinc-700 px-5 py-2.5 font-black transition shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] ${shopOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+            <button onClick={toggleShop} className={`rounded-xl border-2 border-zinc-700 px-5 py-2.5 font-black transition shadow-[2px_2px_0px_#000] ${shopOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
               {shopOpen ? 'Закрыть магазин' : 'Открыть магазин'}
             </button>
           </div>
