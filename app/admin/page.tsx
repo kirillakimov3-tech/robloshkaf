@@ -1,15 +1,15 @@
 'use client';
-
+ 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
+ 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
+ 
 const ADMIN_PASSWORD = 'robloshkaf2026';
-
+ 
 type OrderItem = {
   id: string;
   username: string;
@@ -24,7 +24,7 @@ type OrderItem = {
   background?: string;
   previewDataUrl?: string;
 };
-
+ 
 type Order = {
   id: string;
   created_at: string;
@@ -36,7 +36,7 @@ type Order = {
   status: string;
   items: OrderItem[];
 };
-
+ 
 type InventoryItem = {
   id: string;
   color: string;
@@ -44,7 +44,7 @@ type InventoryItem = {
   in_stock: boolean;
   quantity: number;
 };
-
+ 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   new:       { label: 'Новый',       color: 'bg-yellow-400 text-zinc-900' },
   confirmed: { label: 'Подтверждён', color: 'bg-blue-500 text-white' },
@@ -52,7 +52,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   shipped:   { label: 'Отправлен',   color: 'bg-purple-500 text-white' },
   done:      { label: 'Выполнен',    color: 'bg-green-500 text-white' },
 };
-
+ 
 const SIZES = ['S', 'M', 'L', 'XL'];
 const PRINT_W = 530;
 const PRINT_H = 520;
@@ -60,11 +60,11 @@ const DPI_SCALE = 1000 / PRINT_W; // Lower res for PDF — smaller file size
 const PX = Math.round(PRINT_W * DPI_SCALE);
 const PY = Math.round(PRINT_H * DPI_SCALE);
 const RAINBOW_RATIO = 1817 / 961;
-
+ 
 const BACKGROUNDS: Record<string, string | null> = {
   rainbow: 'https://robloshkaf.vercel.app/backgrounds/rainbow-transparent.png',
 };
-
+ 
 const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -80,7 +80,7 @@ const downloadPdf = async (dataUrl: string, filename: string, label: string) => 
   doc.text('Transparent background — for DTF print', 30, 180);
   doc.save(filename);
 };
-
+ 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -89,13 +89,13 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
     img.onerror = reject;
     img.src = src;
   });
-
+ 
 const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   const canvas = document.createElement('canvas');
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
-
+ 
   // Draw background image if exists
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
@@ -108,7 +108,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(bgImg, bgX * DPI_SCALE, bgY * DPI_SCALE, bgW * DPI_SCALE, bgH * DPI_SCALE);
     } catch {}
   }
-
+ 
   // Draw avatar
   if (item.avatarUrl) {
     try {
@@ -120,16 +120,16 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(avatarImg, ax * DPI_SCALE, ay * DPI_SCALE, avatarW * DPI_SCALE, avatarH * DPI_SCALE);
     } catch {}
   }
-
+ 
   return canvas.toDataURL('image/png');
 };
-
+ 
 const generateNickname = (item: OrderItem): string => {
   const canvas = document.createElement('canvas');
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
-
+ 
   if (item.nickname) {
     const fontSize = (item.nicknameSize || 30) * DPI_SCALE;
     ctx.save();
@@ -142,22 +142,22 @@ const generateNickname = (item: OrderItem): string => {
     ctx.fillText(item.nickname, 0, 0);
     ctx.restore();
   }
-
+ 
   return canvas.toDataURL('image/png');
 };
-
+ 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [tab, setTab] = useState<'orders' | 'inventory'>('orders');
   const [downloading, setDownloading] = useState<string>('');
-
+ 
   useEffect(() => {
     const saved = localStorage.getItem('admin_authed');
     if (saved === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); loadInventory(); }
   }, []);
-
+ 
   const [orders, setOrders] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [filter, setFilter] = useState('all');
@@ -165,20 +165,20 @@ export default function AdminPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
-
+ 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
       localStorage.setItem('admin_authed', ADMIN_PASSWORD);
       setAuthed(true); setPasswordError(false); loadOrders(); loadInventory();
     } else { setPasswordError(true); }
   };
-
+ 
   const loadOrders = async () => {
     setLoadingOrders(true);
     const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     setOrders(data || []); setLoadingOrders(false);
   };
-
+ 
   const loadInventory = async () => {
     setLoadingInventory(true);
     const { data: inv } = await supabase.from('inventory').select('*');
@@ -188,81 +188,56 @@ export default function AdminPage() {
     setShopOpen(shopSetting?.value === 'true');
     setLoadingInventory(false);
   };
-
+ 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
   };
-
+ 
   const deleteOrder = async (id: string) => {
     if (!confirm('Удалить заказ? Это действие нельзя отменить.')) return;
     await supabase.from('orders').delete().eq('id', id);
     setOrders(prev => prev.filter(o => o.id !== id));
     if (selected?.id === id) setSelected(null);
   };
-
+ 
   const updateInventory = async (id: string, field: 'in_stock' | 'quantity', value: boolean | number) => {
     await supabase.from('inventory').update({ [field]: value }).eq('id', id);
     setInventory(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
   };
-
+ 
   const toggleShop = async () => {
     const next = !shopOpen;
     await supabase.from('settings').update({ value: String(next) }).eq('key', 'shop_open');
     setShopOpen(next);
   };
-
+ 
   const handleDownloadAvatarBg = async (item: OrderItem) => {
-  setDownloading(item.id + '-bg');
-  const dataUrl = await generateAvatarBg(item);
-
-  try {
-    // Создаём задачу
-    const res = await fetch('/api/upscale', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: dataUrl }),
-    });
-    const { taskId } = await res.json();
-
-    if (taskId) {
-      // Polling каждые 3 секунды до 2 минут
-      for (let i = 0; i < 40; i++) {
-        await new Promise(r => setTimeout(r, 3000));
-        const statusRes = await fetch(`/api/upscale/status?taskId=${taskId}`);
-        const { status, url } = await statusRes.json();
-
-        if (status === 'succeed' && url) {
-          const imgRes = await fetch(url);
-          const blob = await imgRes.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const upscaledCanvas = document.createElement('canvas');
-          const img = new window.Image();
-          await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
-          upscaledCanvas.width = img.width;
-          upscaledCanvas.height = img.height;
-          upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
-          const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
-          URL.revokeObjectURL(blobUrl);
-          await downloadPdf(upscaledDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
-          setDownloading('');
-          return;
-        }
-        if (status === 'failed') break;
-      }
-    }
-  } catch (e) {
-    console.error('Upscale failed', e);
-  }
-
-  // Fallback — скачиваем без апскейла
-  await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
-  setDownloading('');
-};
-
+    setDownloading(item.id + '-bg');
+    const dataUrl = await generateAvatarBg(item);
+    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
+    setDownloading('');
+  };
+ 
+  const handleDownloadNickname = async (item: OrderItem) => {
+    if (!item.nickname) return;
+    setDownloading(item.id + '-nick');
+    const dataUrl = generateNickname(item);
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
+    setDownloading('');
+  };
+ 
+  const handleDownloadNickname = async (item: OrderItem) => {
+    if (!item.nickname) return;
+    setDownloading(item.id + '-nick');
+    const dataUrl = generateNickname(item);
+    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
+    setDownloading('');
+  };
+ 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
-
+ 
   if (!authed) {
     return (
       <main className="min-h-screen bg-zinc-950 flex items-center justify-center px-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -284,7 +259,7 @@ export default function AdminPage() {
       </main>
     );
   }
-
+ 
   return (
     <main className="min-h-screen bg-zinc-950 text-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
       <div className="border-b-2 border-zinc-800 px-6 py-4 flex items-center justify-between">
@@ -304,7 +279,7 @@ export default function AdminPage() {
           <a href="/" className="rounded-xl border-2 border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-black hover:bg-zinc-700 transition">На сайт →</a>
         </div>
       </div>
-
+ 
       {tab === 'orders' && (
         <div className="flex h-[calc(100vh-65px)]">
           <div className="w-80 border-r-2 border-zinc-800 flex flex-col shrink-0">
@@ -328,7 +303,7 @@ export default function AdminPage() {
                 ))}
             </div>
           </div>
-
+ 
           <div className="flex-1 overflow-y-auto p-6">
             {!selected ? <div className="flex h-full items-center justify-center text-zinc-600 font-semibold">Выбери заказ</div> : (
               <div className="max-w-2xl space-y-5">
@@ -344,7 +319,7 @@ export default function AdminPage() {
                     🗑 Удалить
                   </button>
                 </div>
-
+ 
                 <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5">
                   <h3 className="font-black text-sm uppercase tracking-widest text-zinc-400 mb-4">👤 Покупатель</h3>
                   <div className="space-y-2">
@@ -356,7 +331,7 @@ export default function AdminPage() {
                     ))}
                   </div>
                 </div>
-
+ 
                 <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5">
                   <h3 className="font-black text-sm uppercase tracking-widest text-zinc-400 mb-4">👕 Товары ({selected.items.length} шт.)</h3>
                   <div className="space-y-4">
@@ -389,7 +364,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-
+ 
       {tab === 'inventory' && (
         <div className="p-6 max-w-3xl">
           <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-900 p-5 mb-6 flex items-center justify-between">
