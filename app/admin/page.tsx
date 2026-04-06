@@ -62,7 +62,7 @@ const PY = Math.round(PRINT_H * DPI_SCALE);
 const RAINBOW_RATIO = 1817 / 961;
  
 const BACKGROUNDS: Record<string, string | null> = {
-  rainbow: 'https://robloshkaf.vercel.app/backgrounds/rainbow-transparent.png',
+  explosion: 'https://robloshkaf.vercel.app/backgrounds/explosion.png',
 };
  
 const downloadPdf = async (dataUrl: string, filename: string, label: string) => {
@@ -90,17 +90,21 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
+
+  // Добавь это — рисуем фон ПЕРЕД аватаром:
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
       const bgImg = await loadImage(bgImageSrc);
-      const bgW = PRINT_W * 0.693;
-      const bgH = bgW / RAINBOW_RATIO;
-      const bgX = (PRINT_W - bgW) / 2;
-      const bgY = PRINT_H * 0.18;
+      const bgX = PRINT_W * 0.07;
+      const bgY = PRINT_H * 0.14;
+      const bgW = PRINT_W * 0.9;
+      const bgH = PRINT_H * 0.9;
       ctx.drawImage(bgImg, bgX * DPI_SCALE, bgY * DPI_SCALE, bgW * DPI_SCALE, bgH * DPI_SCALE);
     } catch {}
   }
+
+  // Аватар поверх фона
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
@@ -111,6 +115,7 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(avatarImg, ax * DPI_SCALE, ay * DPI_SCALE, avatarW * DPI_SCALE, avatarH * DPI_SCALE);
     } catch {}
   }
+
   return canvas.toDataURL('image/png');
 };
  
