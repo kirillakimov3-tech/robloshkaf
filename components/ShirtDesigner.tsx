@@ -576,9 +576,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     fontFamily={nicknameFont} rotation={nicknameRotation}
                     draggable onDragEnd={handleNicknameDragEnd} />
                 )}
-                {selectedBg !== 'none' && overlayImage && (
-                  <KonvaImage image={overlayImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} listening={false} />
-                )}
+
               </Layer>
             </Stage>
           </div>
