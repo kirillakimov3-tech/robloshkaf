@@ -534,7 +534,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
             </div>
           </div>
  
-          <div className="rounded-[32px] bg-zinc-100 overflow-hidden flex items-center justify-center min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
+          <div className="rounded-[32px] bg-zinc-300 overflow-hidden flex items-center justify-center min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <div style={{ transform: 'scale(0.75)', transformOrigin: 'center center' }}>
               <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
                 {/* Layer 1: shirt mockup */}
