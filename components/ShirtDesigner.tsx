@@ -147,14 +147,21 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
  
     if (bgDef?.image) {
-      await new Promise<void>(resolve => {
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => { ctx.drawImage(img, 0, 0, PRINT_PX, PRINT_PY); resolve(); };
-        img.onerror = () => resolve();
-        img.src = bgDef.image!;
-      });
-    }
+  await new Promise<void>(resolve => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const bgX = PRINT_AREA.width * 0.07 * PRINT_DPI_SCALE;
+      const bgY = PRINT_AREA.height * 0.14 * PRINT_DPI_SCALE;
+      const bgW = PRINT_AREA.width * 0.9 * PRINT_DPI_SCALE;
+      const bgH = PRINT_AREA.height * 0.9 * PRINT_DPI_SCALE;
+      ctx.drawImage(img, bgX, bgY, bgW, bgH);
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = bgDef.image!;
+  });
+}
  
     if (avatarImage) {
       ctx.drawImage(avatarImage,
