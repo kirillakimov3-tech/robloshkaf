@@ -514,7 +514,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
             </div>
           </div>
 
-          <div className="rounded-[32px] bg-white p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
+          <div className="rounded-[32px] bg-zinc-100 p-4 overflow-auto min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
               {/* Layer 1: shirt mockup (no bg) */}
               <Layer listening={false}>
