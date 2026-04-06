@@ -458,8 +458,8 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                     if (bgDef?.image && mockupImage) {
                       return (
-                       <Group clipX={PRINT_AREA.x - 20} clipY={PRINT_AREA.y - 60} clipWidth={PRINT_AREA.width + 40} clipHeight={PRINT_AREA.height + 120}>
-  <ImageBackgroundLayer src={bgDef.image} x={PRINT_AREA.x - 20} y={PRINT_AREA.y - 60} width={PRINT_AREA.width + 40} height={PRINT_AREA.height + 120} />
+                       <Group clipX={mockupX} clipY={mockupY} clipWidth={mockupSize.width} clipHeight={mockupSize.height}>
+  <ImageBackgroundLayer src={bgDef.image} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
 </Group>
                       );
                     }
