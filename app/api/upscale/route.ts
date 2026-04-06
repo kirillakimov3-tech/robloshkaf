@@ -3,14 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   const { imageBase64 } = await req.json();
 
-  // Загружаем base64 на временный хостинг через KIE upload
-  const uploadRes = await fetch('https://api.kie.ai/api/v1/resource/upload', {
+  // Конвертируем base64 в blob и загружаем на imgbb (бесплатный хостинг)
+  const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+  
+  const formData = new FormData();
+  formData.append('image', base64Data);
+  formData.append('key', process.env.IMGBB_API_KEY!);
+
+  const uploadRes = await fetch('https://api.imgbb.com/1/upload', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KIE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ file: imageBase64 }),
+    body: formData,
   });
 
   const uploadData = await uploadRes.json();
