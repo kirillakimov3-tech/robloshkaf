@@ -9,13 +9,3 @@ html, body {
 * {
   box-sizing: border-box;
 }
-@keyframes flyToCart {
-  0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--fly-end-x), var(--fly-end-y)) scale(0.25);
-    opacity: 0.2;
-  }
-}
