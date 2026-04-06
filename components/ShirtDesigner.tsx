@@ -39,91 +39,11 @@ const FONTS = [
 type FontId = typeof FONTS[number]['id'];
  
 const BACKGROUNDS = [
-  { id: 'none',    label: 'Нет',      colors: null,       image: null },
-  { id: 'rainbow', label: 'Радуга',   colors: null,       image: '/backgrounds/rainbow-transparent.png' },
-  { id: 'sunset',  label: 'Закат',    colors: ['#FF6B35', '#F7C59F', '#FFDA77'], image: null },
-  { id: 'sky',     label: 'Небо',     colors: ['#4FC3F7', '#81D4FA', '#E1F5FE'], image: null },
-  { id: 'night',   label: 'Ночь',     colors: ['#0D1B2A', '#1B263B', '#415A77'], image: null },
-  { id: 'stars',   label: 'Звёзды',   colors: ['#0a0a1a', '#1a1a3e', '#0d0d2b'], image: null },
-  { id: 'pixel',   label: 'Пиксель',  colors: ['#E02020', '#FFD93D', '#18181b'], image: null },
-  { id: 'city',    label: 'Город',    colors: ['#1a1a2e', '#16213e', '#0f3460'], image: null },
-  { id: 'red',     label: 'Красный',  colors: ['#E02020', '#c41010'],            image: null },
-  { id: 'yellow',  label: 'Жёлтый',   colors: ['#FFD93D', '#FFC107'],            image: null },
-  { id: 'blue',    label: 'Синий',    colors: ['#1565C0', '#1976D2'],            image: null },
+  { id: 'none',      label: 'Нет',    colors: null, image: null },
+  { id: 'explosion', label: 'Взрыв',  colors: null, image: '/backgrounds/explosion.png' },
 ] as const;
  
 type BgId = typeof BACKGROUNDS[number]['id'];
- 
-function BackgroundLayer({ bgId, x, y, width, height }: { bgId: BgId; x: number; y: number; width: number; height: number }) {
-  const bg = BACKGROUNDS.find(b => b.id === bgId);
-  if (!bg || !bg.colors) return null;
- 
-  if (bgId === 'stars') {
-    return (
-      <>
-        <Rect x={x} y={y} width={width} height={height}
-          fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-          fillLinearGradientEndPoint={{ x: 0, y: height }}
-          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]}
-          cornerRadius={16} />
-        {Array.from({ length: 40 }).map((_, i) => (
-          <Rect key={i} x={x + (i * 73 % width)} y={y + (i * 53 % height)}
-            width={2} height={2} fill="white" opacity={0.5 + (i % 5) * 0.1} cornerRadius={1} />
-        ))}
-      </>
-    );
-  }
- 
-  if (bgId === 'pixel') {
-    const cellSize = 40;
-    const cells = [];
-    for (let row = 0; row < Math.ceil(height / cellSize); row++) {
-      for (let col = 0; col < Math.ceil(width / cellSize); col++) {
-        cells.push(<Rect key={`${row}-${col}`} x={x + col * cellSize} y={y + row * cellSize}
-          width={cellSize} height={cellSize} fill={(row + col) % 2 === 0 ? bg.colors[0] : bg.colors[1]} opacity={0.18} />);
-      }
-    }
-    return <><Rect x={x} y={y} width={width} height={height} fill={bg.colors[2] ?? bg.colors[1]} cornerRadius={16} />{cells}</>;
-  }
- 
-  if (bgId === 'city') {
-    const buildings = [
-      { bx: 0,            bh: height*0.5, bw: width*0.15 },
-      { bx: width*0.12,   bh: height*0.7, bw: width*0.12 },
-      { bx: width*0.22,   bh: height*0.4, bw: width*0.1  },
-      { bx: width*0.30,   bh: height*0.6, bw: width*0.14 },
-      { bx: width*0.42,   bh: height*0.8, bw: width*0.13 },
-      { bx: width*0.53,   bh: height*0.55,bw: width*0.11 },
-      { bx: width*0.62,   bh: height*0.65,bw: width*0.12 },
-      { bx: width*0.72,   bh: height*0.45,bw: width*0.13 },
-      { bx: width*0.83,   bh: height*0.7, bw: width*0.17 },
-    ];
-    return (
-      <>
-        <Rect x={x} y={y} width={width} height={height}
-          fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-          fillLinearGradientEndPoint={{ x: 0, y: height }}
-          fillLinearGradientColorStops={[0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]}
-          cornerRadius={16} />
-        {buildings.map((b, i) => (
-          <Rect key={i} x={x+b.bx} y={y+height-b.bh} width={b.bw} height={b.bh} fill="#050a18" opacity={0.9} />
-        ))}
-      </>
-    );
-  }
- 
-  return (
-    <Rect x={x} y={y} width={width} height={height}
-      fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-      fillLinearGradientEndPoint={{ x: 0, y: height }}
-      fillLinearGradientColorStops={
-        bg.colors.length === 2
-          ? [0, bg.colors[0], 1, bg.colors[1]]
-          : [0, bg.colors[0], 0.5, bg.colors[1], 1, bg.colors[2] ?? bg.colors[1]]
-      }
-      cornerRadius={16} />
-  );
-}
  
 function ImageBackgroundLayer({ src, x, y, width, height }: { src: string; x: number; y: number; width: number; height: number }) {
   const [img] = useImage(src, 'anonymous');
@@ -227,20 +147,11 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
  
     if (bgDef?.image) {
-      const rainbowRatio = 1817 / 961;
-      const bgW = PRINT_AREA.width * 0.693;
-      const bgH = bgW / rainbowRatio;
-      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
-      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
       await new Promise<void>(resolve => {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          ctx.drawImage(img,
-            (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
-            (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
-            bgW * PRINT_DPI_SCALE,
-            bgH * PRINT_DPI_SCALE);
+          ctx.drawImage(img, 0, 0, PRINT_PX, PRINT_PY);
           resolve();
         };
         img.onerror = () => resolve();
@@ -423,11 +334,9 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     style={{
                       background: bg.image
                         ? `url(${bg.image}) center/cover`
-                        : bg.colors
-                          ? `linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[bg.colors.length - 1]})`
-                          : '#f4f4f5'
+                        : '#f4f4f5'
                     }}>
-                    <span className={`block text-center leading-tight ${bg.colors && bg.id !== 'yellow' ? 'text-white drop-shadow-sm' : bg.image ? 'text-white drop-shadow-sm' : 'text-zinc-900'}`}>{bg.label}</span>
+                    <span className={`block text-center leading-tight ${bg.image ? 'text-white drop-shadow-sm' : 'text-zinc-900'}`}>{bg.label}</span>
                   </button>
                 ))}
               </div>
@@ -543,32 +452,15 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                     <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                   )}
                 </Layer>
-                {/* Layer 2: image/color background inside print area */}
+                {/* Layer 2: background inside print area */}
                 <Layer listening={false}>
                   {(() => {
                     const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
                     if (bgDef?.image && mockupImage) {
-                      const rainbowRatio = 1817 / 961;
-                      const bgW = PRINT_AREA.width * 0.689;
-                      const bgH = bgW / rainbowRatio;
-                      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
-                      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
                       return (
                         <Group clipX={PRINT_AREA.x} clipY={PRINT_AREA.y} clipWidth={PRINT_AREA.width} clipHeight={PRINT_AREA.height}>
-                          <ImageBackgroundLayer src={bgDef.image} x={bgX} y={bgY} width={bgW} height={bgH} />
+                          <ImageBackgroundLayer src={bgDef.image} x={PRINT_AREA.x} y={PRINT_AREA.y} width={PRINT_AREA.width} height={PRINT_AREA.height} />
                         </Group>
-                      );
-                    }
-                    if (bgDef?.colors && mockupImage) {
-                      return (
-                        <>
-                          <BackgroundLayer bgId={selectedBg} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                          <KonvaImage
-                            image={mockupImage} x={mockupX} y={mockupY}
-                            width={mockupSize.width} height={mockupSize.height}
-                            globalCompositeOperation="destination-in"
-                          />
-                        </>
                       );
                     }
                     return null;
