@@ -233,11 +233,13 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       
       if (data.url) {
         // Скачиваем улучшенное изображение
-        const imgRes = await fetch(data.url);
-        const blob = await imgRes.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        await downloadBlob(blobUrl, `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
-        URL.revokeObjectURL(blobUrl);
+       const a = document.createElement('a');
+a.href = data.url;
+a.download = `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`;
+a.target = '_blank';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
         return;
       }
     } catch (e) {
