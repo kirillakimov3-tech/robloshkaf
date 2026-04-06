@@ -215,40 +215,81 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     });
  
   const exportAvatarBg = async () => {
-  // ... весь существующий код генерации canvas ...
-  const dataUrl = canvas.toDataURL('image/png');
-
-  // Если включён апскейл
-  if (process.env.NEXT_PUBLIC_APP_URL) {
+    const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
+    const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
+    const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
+    const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
+ 
+    const canvas = document.createElement('canvas');
+    canvas.width = PRINT_PX;
+    canvas.height = PRINT_PY;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
+ 
+    if (bgDef?.image) {
+      const rainbowRatio = 1817 / 961;
+      const bgW = PRINT_AREA.width * 0.693;
+      const bgH = bgW / rainbowRatio;
+      const bgX = PRINT_AREA.x + (PRINT_AREA.width - bgW) / 2;
+      const bgY = PRINT_AREA.y + PRINT_AREA.height * 0.18;
+      await new Promise<void>(resolve => {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          ctx.drawImage(img,
+            (bgX - PRINT_AREA.x) * PRINT_DPI_SCALE,
+            (bgY - PRINT_AREA.y) * PRINT_DPI_SCALE,
+            bgW * PRINT_DPI_SCALE,
+            bgH * PRINT_DPI_SCALE);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = bgDef.image!;
+      });
+    }
+ 
+    if (avatarImage) {
+      ctx.drawImage(avatarImage,
+        (x - PRINT_AREA.x) * PRINT_DPI_SCALE,
+        (y - PRINT_AREA.y) * PRINT_DPI_SCALE,
+        avatarWidth * PRINT_DPI_SCALE,
+        avatarHeight * PRINT_DPI_SCALE);
+    }
+ 
+    const dataUrl = canvas.toDataURL('image/png');
+    const filename = `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`;
+ 
     try {
-      const btn = document.querySelector('[data-export-btn]') as HTMLButtonElement;
-      if (btn) btn.textContent = '⏳ Улучшаем качество...';
-      
+      const exportBtn = document.getElementById('export-avatar-btn');
+      if (exportBtn) exportBtn.textContent = '⏳ Улучшаем качество...';
+ 
       const res = await fetch('/api/upscale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: dataUrl }),
       });
       const data = await res.json();
-      
+ 
+      if (exportBtn) exportBtn.textContent = '📥 Скачать: Фон + Аватар';
+ 
       if (data.url) {
-        // Скачиваем улучшенное изображение
-       const a = document.createElement('a');
-a.href = data.url;
-a.download = `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`;
-a.target = '_blank';
-document.body.appendChild(a);
-a.click();
-document.body.removeChild(a);
+        const a = document.createElement('a');
+        a.href = data.url;
+        a.download = filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         return;
       }
     } catch (e) {
       console.error('Upscale failed, downloading original', e);
+      const exportBtn = document.getElementById('export-avatar-btn');
+      if (exportBtn) exportBtn.textContent = '📥 Скачать: Фон + Аватар';
     }
-  }
-
-  await downloadBlob(dataUrl, `print-1-avatar-bg-${username || 'user'}-${shirtSize}.png`);
-};
+ 
+    await downloadBlob(dataUrl, filename);
+  };
  
   const exportNickname = async () => {
     if (!showNickname || !label.trim()) return;
@@ -480,7 +521,7 @@ document.body.removeChild(a);
               </button>
               {isAdmin && (
                 <>
-                  <button onClick={exportAvatarBg}
+                  <button id="export-avatar-btn" onClick={exportAvatarBg}
                     className="w-full rounded-2xl border-2 border-zinc-900 bg-yellow-400 px-4 py-3.5 font-black text-zinc-900 shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all">
                     📥 Скачать: Фон + Аватар
                   </button>
