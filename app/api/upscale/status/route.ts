@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   });
   const data = await res.json();
   const status = data?.data?.status;
-  const url = data?.data?.output?.imageUrl || data?.data?.output?.[0]?.url;
+  const url = data?.data?.output?.imageUrl || data?.data?.output?.image || data?.data?.output?.[0]?.url;
  
   return NextResponse.json({ status, url });
 }

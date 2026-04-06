@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'recraft/crisp-upscale',
-      input: { image: imageUrl },
-    }),
+  model: 'topaz/upscale',
+  input: { image: imageUrl, upscale_factor: 2 },
+}),
   });
   const taskData = await taskRes.json();
   const taskId = taskData?.data?.taskId;
