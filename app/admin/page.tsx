@@ -214,11 +214,39 @@ export default function AdminPage() {
   };
 
   const handleDownloadAvatarBg = async (item: OrderItem) => {
-    setDownloading(item.id + '-bg');
-    const dataUrl = await generateAvatarBg(item);
-    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
-    setDownloading('');
-  };
+  setDownloading(item.id + '-bg');
+  const dataUrl = await generateAvatarBg(item);
+
+  try {
+    const res = await fetch('/api/upscale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: dataUrl }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      const imgRes = await fetch(data.url);
+      const blob = await imgRes.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const upscaledCanvas = document.createElement('canvas');
+      const img = new window.Image();
+      await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
+      upscaledCanvas.width = img.width;
+      upscaledCanvas.height = img.height;
+      upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
+      const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
+      URL.revokeObjectURL(blobUrl);
+      await downloadPdf(upscaledDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
+      setDownloading('');
+      return;
+    }
+  } catch (e) {
+    console.error('Upscale failed, using original', e);
+  }
+
+  await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
+  setDownloading('');
+};
 
   const handleDownloadNickname = async (item: OrderItem) => {
     if (!item.nickname) return;
