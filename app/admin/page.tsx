@@ -218,43 +218,48 @@ export default function AdminPage() {
   const dataUrl = await generateAvatarBg(item);
 
   try {
+    // Создаём задачу
     const res = await fetch('/api/upscale', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageBase64: dataUrl }),
     });
-    const data = await res.json();
-    if (data.url) {
-      const imgRes = await fetch(data.url);
-      const blob = await imgRes.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const upscaledCanvas = document.createElement('canvas');
-      const img = new window.Image();
-      await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
-      upscaledCanvas.width = img.width;
-      upscaledCanvas.height = img.height;
-      upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
-      const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
-      URL.revokeObjectURL(blobUrl);
-      await downloadPdf(upscaledDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
-      setDownloading('');
-      return;
+    const { taskId } = await res.json();
+
+    if (taskId) {
+      // Polling каждые 3 секунды до 2 минут
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await fetch(`/api/upscale/status?taskId=${taskId}`);
+        const { status, url } = await statusRes.json();
+
+        if (status === 'succeed' && url) {
+          const imgRes = await fetch(url);
+          const blob = await imgRes.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const upscaledCanvas = document.createElement('canvas');
+          const img = new window.Image();
+          await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
+          upscaledCanvas.width = img.width;
+          upscaledCanvas.height = img.height;
+          upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
+          const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
+          URL.revokeObjectURL(blobUrl);
+          await downloadPdf(upscaledDataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
+          setDownloading('');
+          return;
+        }
+        if (status === 'failed') break;
+      }
     }
   } catch (e) {
-    console.error('Upscale failed, using original', e);
+    console.error('Upscale failed', e);
   }
 
+  // Fallback — скачиваем без апскейла
   await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
   setDownloading('');
 };
-
-  const handleDownloadNickname = async (item: OrderItem) => {
-    if (!item.nickname) return;
-    setDownloading(item.id + '-nick');
-    const dataUrl = generateNickname(item);
-    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
-    setDownloading('');
-  };
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
 
