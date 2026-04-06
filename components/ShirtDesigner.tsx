@@ -420,15 +420,15 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
   )}
 </Layer>
-{/* Layer 2: фон поверх футболки, обрезается по форме */}
+{/* Layer 2: фон только в зоне печати */}
 <Layer listening={false}>
   {bgDef?.image && mockupImage && (
     <>
       <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
       <ImageBackgroundLayer
         src={bgDef.image}
-        x={mockupX} y={mockupY}
-        width={mockupSize.width} height={mockupSize.height}
+        x={PRINT_AREA.x} y={PRINT_AREA.y}
+        width={PRINT_AREA.width} height={PRINT_AREA.height}
         globalCompositeOperation="source-atop"
       />
     </>
