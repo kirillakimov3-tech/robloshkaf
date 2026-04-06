@@ -45,10 +45,10 @@ const BACKGROUNDS = [
  
 type BgId = typeof BACKGROUNDS[number]['id'];
  
-function ImageBackgroundLayer({ src, x, y, width, height }: { src: string; x: number; y: number; width: number; height: number }) {
+function ImageBackgroundLayer({ src, x, y, width, height, globalCompositeOperation }: { src: string; x: number; y: number; width: number; height: number; globalCompositeOperation?: string }) {
   const [img] = useImage(src, 'anonymous');
   if (!img) return null;
-  return <KonvaImage image={img} x={x} y={y} width={width} height={height} />;
+  return <KonvaImage image={img} x={x} y={y} width={width} height={height} globalCompositeOperation={globalCompositeOperation as any} />;
 }
  
 export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, isAdmin = false }: Props) {
@@ -414,22 +414,26 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
           <div className="rounded-[32px] bg-zinc-300 overflow-hidden flex items-center justify-center min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <div style={{ transform: 'scale(0.75)', transformOrigin: 'center center' }}>
               <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
-                {/* Layer 1: фон — рисуем ДО футболки */}
-                <Layer listening={false}>
-                  {bgDef?.image && mockupImage && (
-                    <ImageBackgroundLayer
-                      src={bgDef.image}
-                      x={mockupX} y={mockupY}
-                      width={mockupSize.width} height={mockupSize.height}
-                    />
-                  )}
-                </Layer>
-                {/* Layer 2: футболка поверх фона — прозрачные пиксели скрывают фон за пределами */}
-                <Layer listening={false}>
-                  {mockupImage && (
-                    <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-                  )}
-                </Layer>
+               {/* Layer 1: футболка */}
+<Layer listening={false}>
+  {mockupImage && (
+    <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+  )}
+</Layer>
+{/* Layer 2: фон поверх футболки, обрезается по форме */}
+<Layer listening={false}>
+  {bgDef?.image && mockupImage && (
+    <>
+      <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
+      <ImageBackgroundLayer
+        src={bgDef.image}
+        x={mockupX} y={mockupY}
+        width={mockupSize.width} height={mockupSize.height}
+        globalCompositeOperation="source-atop"
+      />
+    </>
+  )}
+</Layer>
                 {/* Layer 3: аватар и никнейм */}
                 <Layer>
                   {avatarImage ? (
