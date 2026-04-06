@@ -56,7 +56,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const SIZES = ['S', 'M', 'L', 'XL'];
 const PRINT_W = 530;
 const PRINT_H = 520;
-const DPI_SCALE = 1000 / PRINT_W; // Lower res for PDF — smaller file size
+const DPI_SCALE = 1000 / PRINT_W;
 const PX = Math.round(PRINT_W * DPI_SCALE);
 const PY = Math.round(PRINT_H * DPI_SCALE);
 const RAINBOW_RATIO = 1817 / 961;
@@ -95,8 +95,6 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
- 
-  // Draw background image if exists
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
@@ -108,8 +106,6 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(bgImg, bgX * DPI_SCALE, bgY * DPI_SCALE, bgW * DPI_SCALE, bgH * DPI_SCALE);
     } catch {}
   }
- 
-  // Draw avatar
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
@@ -120,7 +116,6 @@ const generateAvatarBg = async (item: OrderItem): Promise<string> => {
       ctx.drawImage(avatarImg, ax * DPI_SCALE, ay * DPI_SCALE, avatarW * DPI_SCALE, avatarH * DPI_SCALE);
     } catch {}
   }
- 
   return canvas.toDataURL('image/png');
 };
  
@@ -129,7 +124,6 @@ const generateNickname = (item: OrderItem): string => {
   canvas.width = PX; canvas.height = PY;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, PX, PY);
- 
   if (item.nickname) {
     const fontSize = (item.nicknameSize || 30) * DPI_SCALE;
     ctx.save();
@@ -142,7 +136,6 @@ const generateNickname = (item: OrderItem): string => {
     ctx.fillText(item.nickname, 0, 0);
     ctx.restore();
   }
- 
   return canvas.toDataURL('image/png');
 };
  
@@ -152,12 +145,6 @@ export default function AdminPage() {
   const [passwordError, setPasswordError] = useState(false);
   const [tab, setTab] = useState<'orders' | 'inventory'>('orders');
   const [downloading, setDownloading] = useState<string>('');
- 
-  useEffect(() => {
-    const saved = localStorage.getItem('admin_authed');
-    if (saved === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); loadInventory(); }
-  }, []);
- 
   const [orders, setOrders] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [filter, setFilter] = useState('all');
@@ -165,6 +152,11 @@ export default function AdminPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
+ 
+  useEffect(() => {
+    const saved = localStorage.getItem('admin_authed');
+    if (saved === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); loadInventory(); }
+  }, []);
  
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -216,15 +208,46 @@ export default function AdminPage() {
   const handleDownloadAvatarBg = async (item: OrderItem) => {
     setDownloading(item.id + '-bg');
     const dataUrl = await generateAvatarBg(item);
-    await downloadPdf(dataUrl, `print-1-avatar-bg-${item.username}-${item.size}.pdf`, 'AVATAR + BACKGROUND');
-    setDownloading('');
-  };
+    const filename = `print-1-avatar-bg-${item.username}-${item.size}.pdf`;
  
-  const handleDownloadNickname = async (item: OrderItem) => {
-    if (!item.nickname) return;
-    setDownloading(item.id + '-nick');
-    const dataUrl = generateNickname(item);
-    await downloadPdf(dataUrl, `print-2-nickname-${item.username}-${item.size}.pdf`, 'NICKNAME');
+    try {
+      const res = await fetch('/api/upscale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      });
+      const { taskId } = await res.json();
+ 
+      if (taskId) {
+        for (let i = 0; i < 40; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          const statusRes = await fetch(`/api/upscale/status?taskId=${taskId}`);
+          const { status, url } = await statusRes.json();
+ 
+          if (status === 'succeed' && url) {
+            const imgRes = await fetch(url);
+            const blob = await imgRes.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new window.Image();
+            await new Promise<void>(resolve => { img.onload = () => resolve(); img.src = blobUrl; });
+            const upscaledCanvas = document.createElement('canvas');
+            upscaledCanvas.width = img.width;
+            upscaledCanvas.height = img.height;
+            upscaledCanvas.getContext('2d')!.drawImage(img, 0, 0);
+            const upscaledDataUrl = upscaledCanvas.toDataURL('image/png');
+            URL.revokeObjectURL(blobUrl);
+            await downloadPdf(upscaledDataUrl, filename, 'AVATAR + BACKGROUND');
+            setDownloading('');
+            return;
+          }
+          if (status === 'failed') break;
+        }
+      }
+    } catch (e) {
+      console.error('Upscale failed, using original', e);
+    }
+ 
+    await downloadPdf(dataUrl, filename, 'AVATAR + BACKGROUND');
     setDownloading('');
   };
  
@@ -345,7 +368,7 @@ export default function AdminPage() {
                           <div className="flex gap-2 mt-3 flex-wrap">
                             <button onClick={() => handleDownloadAvatarBg(item)} disabled={downloading === item.id + '-bg'}
                               className="inline-flex items-center gap-1 rounded-xl border-2 border-yellow-400 bg-yellow-400 text-zinc-900 px-3 py-1.5 text-xs font-black hover:bg-yellow-300 transition disabled:opacity-50">
-                              {downloading === item.id + '-bg' ? '⏳ Генерация...' : '📥 Фон + Аватар'}
+                              {downloading === item.id + '-bg' ? '⏳ Апскейл...' : '📥 Фон + Аватар'}
                             </button>
                             {item.nickname && (
                               <button onClick={() => handleDownloadNickname(item)} disabled={downloading === item.id + '-nick'}
