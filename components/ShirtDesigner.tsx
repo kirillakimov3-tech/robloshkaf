@@ -1,7 +1,7 @@
 'use client';
  
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer, Text, Image as KonvaImage, Rect, Group } from 'react-konva';
+import { Stage, Layer, Text, Image as KonvaImage, Rect } from 'react-konva';
 import useImage from 'use-image';
  
 type Props = {
@@ -28,19 +28,19 @@ const SIZE_TABLE = [
 ] as const;
  
 const FONTS = [
-  { id: 'Helvetica',     label: 'Обычный',   preview: 'Aa' },
-  { id: 'ArcoCyrillic',  label: 'Мощный',    preview: 'Aa' },
-  { id: 'Bristol',       label: 'Клякса',    preview: 'Aa' },
-  { id: 'MostWazted',    label: 'Граффити',  preview: 'Aa' },
-  { id: 'Flatiron',      label: 'Мультфильм',preview: 'Aa' },
-  { id: 'SpriteGraffiti',label: 'Фломастер', preview: 'Aa' },
+  { id: 'Helvetica',     label: 'Обычный',    preview: 'Aa' },
+  { id: 'ArcoCyrillic',  label: 'Мощный',     preview: 'Aa' },
+  { id: 'Bristol',       label: 'Клякса',     preview: 'Aa' },
+  { id: 'MostWazted',    label: 'Граффити',   preview: 'Aa' },
+  { id: 'Flatiron',      label: 'Мультфильм', preview: 'Aa' },
+  { id: 'SpriteGraffiti',label: 'Фломастер',  preview: 'Aa' },
 ] as const;
  
 type FontId = typeof FONTS[number]['id'];
  
 const BACKGROUNDS = [
-  { id: 'none',      label: 'Нет',    colors: null, image: null },
-  { id: 'explosion', label: 'Взрыв',  colors: null, image: '/backgrounds/explosion.png' },
+  { id: 'none',      label: 'Нет',   image: null },
+  { id: 'explosion', label: 'Взрыв', image: '/backgrounds/explosion.png' },
 ] as const;
  
 type BgId = typeof BACKGROUNDS[number]['id'];
@@ -150,10 +150,7 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
       await new Promise<void>(resolve => {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, PRINT_PX, PRINT_PY);
-          resolve();
-        };
+        img.onload = () => { ctx.drawImage(img, 0, 0, PRINT_PX, PRINT_PY); resolve(); };
         img.onerror = () => resolve();
         img.src = bgDef.image!;
       });
@@ -173,32 +170,24 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     try {
       const exportBtn = document.getElementById('export-avatar-btn');
       if (exportBtn) exportBtn.textContent = '⏳ Улучшаем качество...';
- 
       const res = await fetch('/api/upscale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: dataUrl }),
       });
       const data = await res.json();
- 
       if (exportBtn) exportBtn.textContent = '📥 Скачать: Фон + Аватар';
- 
       if (data.url) {
         const a = document.createElement('a');
-        a.href = data.url;
-        a.download = filename;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = data.url; a.download = filename; a.target = '_blank';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
         return;
       }
     } catch (e) {
-      console.error('Upscale failed, downloading original', e);
+      console.error('Upscale failed', e);
       const exportBtn = document.getElementById('export-avatar-btn');
       if (exportBtn) exportBtn.textContent = '📥 Скачать: Фон + Аватар';
     }
- 
     await downloadBlob(dataUrl, filename);
   };
  
@@ -207,26 +196,19 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
     const PRINT_DPI_SCALE = 3543 / PRINT_AREA.width;
     const PRINT_PX = Math.round(PRINT_AREA.width * PRINT_DPI_SCALE);
     const PRINT_PY = Math.round(PRINT_AREA.height * PRINT_DPI_SCALE);
- 
     const canvas = document.createElement('canvas');
-    canvas.width = PRINT_PX;
-    canvas.height = PRINT_PY;
+    canvas.width = PRINT_PX; canvas.height = PRINT_PY;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, PRINT_PX, PRINT_PY);
     const fontSize = nicknameSize * PRINT_DPI_SCALE;
     ctx.save();
     ctx.font = `bold ${fontSize}px ${nicknameFont}`;
     ctx.fillStyle = shirtColor === 'black' ? '#ffffff' : '#111111';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.translate(
-      (nameX - PRINT_AREA.x) * PRINT_DPI_SCALE,
-      (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE
-    );
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.translate((nameX - PRINT_AREA.x) * PRINT_DPI_SCALE, (nameY - PRINT_AREA.y) * PRINT_DPI_SCALE);
     ctx.rotate((nicknameRotation * Math.PI) / 180);
     ctx.fillText(label, 0, 0);
     ctx.restore();
- 
     await downloadBlob(canvas.toDataURL('image/png'), `print-2-nickname-${username || 'user'}-${shirtSize}.png`);
   };
  
@@ -282,6 +264,8 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
   const robloxBtnActive = `${robloxBtn} bg-zinc-900 text-white`;
   const robloxBtnInactive = `${robloxBtn} bg-white`;
  
+  const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
+ 
   return (
     <>
       <div className="mx-auto max-w-[1520px] px-6 pt-4 pb-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -292,7 +276,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
  
         <div className="grid items-start gap-8 md:grid-cols-[320px_minmax(980px,1fr)]">
           <div className="rounded-[28px] border-2 border-zinc-900 bg-white p-6 space-y-6 self-start shadow-[4px_4px_0px_#18181b]">
- 
             <div>
               <label className={robloxLabel}>Что добавить на футболку</label>
               <div className="grid grid-cols-2 gap-2">
@@ -300,7 +283,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 <button onClick={() => setAvatarType('full')} className={avatarType === 'full' ? robloxBtnActive : robloxBtnInactive}>Весь аватар</button>
               </div>
             </div>
- 
             <div>
               <label className={robloxLabel}>Цвет футболки</label>
               <div className="grid grid-cols-2 gap-2">
@@ -312,7 +294,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 </button>
               </div>
             </div>
- 
             <div>
               <label className={robloxLabel}>Размер футболки</label>
               <div className="grid grid-cols-4 gap-2">
@@ -324,24 +305,18 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 ))}
               </div>
             </div>
- 
             <div>
               <label className={robloxLabel}>Фон персонажа</label>
               <div className="grid grid-cols-5 gap-1.5">
                 {BACKGROUNDS.map((bg) => (
                   <button key={bg.id} onClick={() => setSelectedBg(bg.id)}
                     className={`rounded-xl border-2 py-2 px-1 text-[10px] font-black transition-all ${selectedBg === bg.id ? 'border-zinc-900 shadow-[2px_2px_0px_#18181b]' : 'border-zinc-300 hover:border-zinc-600'}`}
-                    style={{
-                      background: bg.image
-                        ? `url(${bg.image}) center/cover`
-                        : '#f4f4f5'
-                    }}>
+                    style={{ background: bg.image ? `url(${bg.image}) center/cover` : '#f4f4f5' }}>
                     <span className={`block text-center leading-tight ${bg.image ? 'text-white drop-shadow-sm' : 'text-zinc-900'}`}>{bg.label}</span>
                   </button>
                 ))}
               </div>
             </div>
- 
             <div className="rounded-2xl border-2 border-zinc-900 overflow-hidden shadow-[2px_2px_0px_#18181b]">
               <button type="button" onClick={() => setShowSizeTable(prev => !prev)}
                 className="flex w-full items-center justify-between px-4 py-3.5 text-left font-black text-sm hover:bg-zinc-50 transition">
@@ -362,14 +337,12 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 </div>
               </div>
             </div>
- 
             <div>
               <label className={robloxLabel}>Подпись</label>
               <input value={label} onChange={(e) => setLabel(e.target.value)}
                 className="w-full rounded-xl border-2 border-zinc-900 px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 transition shadow-[2px_2px_0px_#18181b]"
                 placeholder="Введите ник" />
             </div>
- 
             <div className="space-y-3">
               <label className={robloxLabel}>Никнейм на футболке</label>
               <label className="flex items-center gap-2.5 text-sm font-semibold cursor-pointer">
@@ -381,7 +354,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 Удалить никнейм
               </button>
             </div>
- 
             <div>
               <label className={robloxLabel}>Шрифт никнейма</label>
               <div className="grid grid-cols-3 gap-2">
@@ -394,19 +366,16 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 ))}
               </div>
             </div>
- 
             <div>
               <label className={robloxLabel}>Размер персонажа</label>
               <input type="range" min="0.45" max="1.45" step="0.05" value={scale}
                 onChange={(e) => setScale(Number(e.target.value))} className="w-full accent-yellow-400" />
             </div>
- 
             <div>
               <label className={robloxLabel}>Размер никнейма</label>
               <input type="range" min="18" max="54" step="1" value={nicknameSize}
                 onChange={(e) => setNicknameSize(Number(e.target.value))} className="w-full accent-yellow-400" />
             </div>
- 
             <div>
               <label className={robloxLabel}>Поворот никнейма</label>
               <div className="grid grid-cols-3 gap-2">
@@ -422,7 +391,6 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
                 ))}
               </div>
             </div>
- 
             <div className="grid gap-3 pt-2 border-t-2 border-zinc-200">
               <button onClick={addToCart}
                 className="w-full rounded-2xl border-2 border-zinc-900 bg-[#E02020] px-4 py-3.5 font-black text-white shadow-[4px_4px_0px_#18181b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#18181b] transition-all">
@@ -446,27 +414,23 @@ export default function ShirtDesigner({ headshotUrl, fullAvatarUrl, username, is
           <div className="rounded-[32px] bg-zinc-300 overflow-hidden flex items-center justify-center min-h-[1040px] border-2 border-zinc-900 shadow-[4px_4px_0px_#18181b]">
             <div style={{ transform: 'scale(0.75)', transformOrigin: 'center center' }}>
               <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT} ref={stageRef}>
-                {/* Layer 1: shirt mockup */}
+                {/* Layer 1: фон — рисуем ДО футболки */}
+                <Layer listening={false}>
+                  {bgDef?.image && mockupImage && (
+                    <ImageBackgroundLayer
+                      src={bgDef.image}
+                      x={mockupX} y={mockupY}
+                      width={mockupSize.width} height={mockupSize.height}
+                    />
+                  )}
+                </Layer>
+                {/* Layer 2: футболка поверх фона — прозрачные пиксели скрывают фон за пределами */}
                 <Layer listening={false}>
                   {mockupImage && (
                     <KonvaImage image={mockupImage} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
                   )}
                 </Layer>
-                {/* Layer 2: background inside print area */}
-                <Layer listening={false}>
-                  {(() => {
-                    const bgDef = BACKGROUNDS.find(b => b.id === selectedBg);
-                    if (bgDef?.image && mockupImage) {
-                      return (
-                       <Group clipX={mockupX} clipY={mockupY} clipWidth={mockupSize.width} clipHeight={mockupSize.height}>
-  <ImageBackgroundLayer src={bgDef.image} x={mockupX} y={mockupY} width={mockupSize.width} height={mockupSize.height} />
-</Group>
-                      );
-                    }
-                    return null;
-                  })()}
-                </Layer>
-                {/* Layer 3: interactive elements (avatar, nickname) */}
+                {/* Layer 3: аватар и никнейм */}
                 <Layer>
                   {avatarImage ? (
                     <KonvaImage image={avatarImage} x={x} y={y} width={avatarWidth} height={avatarHeight} draggable opacity={0.98} onDragEnd={handleAvatarDragEnd} />
