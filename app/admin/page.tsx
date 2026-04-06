@@ -72,12 +72,7 @@ const downloadPdf = async (dataUrl: string, filename: string, label: string) => 
   await new Promise<void>(resolve => { script.onload = () => resolve(); });
   const { jsPDF } = (window as any).jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  doc.setFillColor(24, 24, 27); doc.rect(0, 0, 210, 20, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text(`ROBLOSHKAF — ${label}`, 10, 13);
-  doc.addImage(dataUrl, 'PNG', 30, 25, 150, 150);
-  doc.setFontSize(7); doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'normal');
-  doc.text('Transparent background — for DTF print', 30, 180);
+  doc.addImage(dataUrl, 'PNG', 30, 30, 150, 150);
   doc.save(filename);
 };
  
