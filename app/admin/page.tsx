@@ -132,38 +132,53 @@ const generateAvatarOnly = async (item: OrderItem): Promise<string> => {
 
 // Генерирует референс — футболка + фон + аватар вместе (JPG)
 const generateReference = async (item: OrderItem): Promise<string> => {
-  const MOCK_W = 800;
-  const MOCK_H = 800;
+  const MOCK_W = 1000;
+  const MOCK_H = 1000;
   const canvas = document.createElement('canvas');
   canvas.width = MOCK_W; canvas.height = MOCK_H;
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#f4f4f5';
   ctx.fillRect(0, 0, MOCK_W, MOCK_H);
 
-  // Простой референс: белый фон + фон + аватар
+  // Загружаем мокап футболки
+  const mockupSrc = item.shirtColor === 'black'
+    ? 'https://robloshkaf.vercel.app/mockups/tshirt-black.png'
+    : 'https://robloshkaf.vercel.app/mockups/tshirt-white.png';
+
+  try {
+    const mockupImg = await loadImage(mockupSrc);
+    ctx.drawImage(mockupImg, 0, 0, MOCK_W, MOCK_H);
+  } catch {}
+
+  // Фон поверх футболки в зоне груди
   const bgImageSrc = item.background ? BACKGROUNDS[item.background] : null;
   if (bgImageSrc) {
     try {
       const bgImg = await loadImage(bgImageSrc);
-      ctx.drawImage(bgImg, MOCK_W * 0.1, MOCK_H * 0.2, MOCK_W * 0.8, MOCK_H * 0.7);
+      ctx.drawImage(bgImg, MOCK_W * 0.17, MOCK_H * 0.28, MOCK_W * 0.66, MOCK_H * 0.55);
     } catch {}
   }
+
+  // Аватар поверх фона
   if (item.avatarUrl) {
     try {
       const avatarImg = await loadImage(item.avatarUrl);
-      const avatarW = MOCK_W * 0.35;
-      const avatarH = MOCK_H * 0.5;
-      ctx.drawImage(avatarImg, (MOCK_W - avatarW) / 2, MOCK_H * 0.25, avatarW, avatarH);
+      const avatarW = MOCK_W * 0.28;
+      const avatarH = MOCK_H * 0.4;
+      ctx.drawImage(avatarImg, (MOCK_W - avatarW) / 2, MOCK_H * 0.28, avatarW, avatarH);
     } catch {}
   }
+
+  // Никнейм
   if (item.nickname) {
-    const fontSize = (item.nicknameSize || 30) * 1.5;
+    const fontSize = (item.nicknameSize || 30) * 2;
     ctx.font = `bold ${fontSize}px ${item.nicknameFont || 'Arial'}`;
     ctx.fillStyle = item.shirtColor === 'black' ? '#ffffff' : '#111111';
     ctx.textAlign = 'center';
-    ctx.fillText(item.nickname, MOCK_W / 2, MOCK_H * 0.85);
+    ctx.fillText(item.nickname, MOCK_W / 2, MOCK_H * 0.78);
   }
-  return canvas.toDataURL('image/jpeg', 0.9);
+
+  return canvas.toDataURL('image/jpeg', 0.92);
 };
 
 // Генерирует никнейм как PNG (текст в кривых через canvas)
