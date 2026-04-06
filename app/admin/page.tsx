@@ -313,11 +313,12 @@ export default function AdminPage() {
 
   // Кнопка 3: референс JPG
   const handleDownloadReference = async (item: OrderItem) => {
-    setDownloading(item.id + '-ref');
-    const dataUrl = await generateReference(item);
-    downloadJpg(dataUrl, `3-reference-${item.username}-${item.size}.jpg`);
-    setDownloading('');
-  };
+  setDownloading(item.id + '-ref');
+  if (item.previewDataUrl) {
+    downloadJpg(item.previewDataUrl, `3-reference-${item.username}-${item.size}.jpg`);
+  }
+  setDownloading('');
+};
 
   // Кнопка 4: никнейм PNG
   const handleDownloadNickname = async (item: OrderItem) => {
